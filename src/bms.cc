@@ -1,12 +1,14 @@
 #include "bms.hh"
 using namespace std;
 
-istream &operator>>(istream &in, BMS::Data &data) {
-  auto nextValue = [&in]() -> float {
-    if (string line; getline(in, line, BMS::sep))
-      return stof(line);
-    return 0.0f;
-  };
+istream &operator>>(istream &in, BMS::Data &data)
+{
+  auto nextValue = [&in]() -> float
+    {
+      if (string line; getline(in, line, BMS::sep))
+        return stof(line);
+      return 0.0f;
+    };
 
   // Read BMS data in the right order.
   for (float &val : data.cellVolts) val = nextValue();

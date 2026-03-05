@@ -1,10 +1,14 @@
+#include "ring.hh"
 #include "bms.hh"
 #include "monitoring_window.hh"
 
+#include <iostream> // Remove this
+#include <thread>
 #include <string>
 using namespace std;
 
-int main() {
+int main()
+{
   // Initialize all the subsystems.
   MonitoringWindow::init();
   
@@ -15,13 +19,17 @@ int main() {
   // Initialize the monitoring window.
   MonitoringWindow window("BMSUI - "s + bmsdevice);
 
-  // Enable wanted views of data
-  // window.module_view();         // each cell's temperature & voltage
-  // window.general_statistics();  // general statistics (min, max, avg)
-  // window.pack_vi();             // display battery pack V and I
-  // window.bms_vi();              // display BMS-level V and I
-  // window.bms_temp();            // display the BMS PCB temperatures
+  // Enalbe wanted views of data
+  window.enable(MonitoringWindow::Module::DEMO);
+
+  // Render the monitoring window
+  Ring<BMS::Data, 64> ring;
+  jthread producer{[&]()
+  {
+    bms.next();                 // TODO: what if this is EOF?
+    ring.push(bms.data());
+  }};
 
   // Start rendering the monitoring window
-  window.render();
+  window.render(ring);
 }

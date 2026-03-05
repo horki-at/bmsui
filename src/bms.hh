@@ -4,7 +4,8 @@
 #include <fstream>
 #include <array>
 
-class BMS {
+class BMS
+{
 public:
   static constexpr size_t modules = 4;
   static constexpr size_t cells = 40;
@@ -12,7 +13,8 @@ public:
   static constexpr size_t pcbs = 4;
   static constexpr char sep = ',';
   
-  struct Data {
+  struct Data
+  {
     friend std::istream &operator>>(std::istream &in, Data &data);
     
     std::array<float, modules * cells> cellVolts;
@@ -30,9 +32,14 @@ private:
   
 public:
   BMS(char const *device);
+  BMS(BMS const &) = delete;
+  BMS(BMS &&) = delete;
+  BMS &operator=(BMS const &) = delete;
+  BMS &operator=(BMS &&) = delete;
+  ~BMS() = default;
 
   bool next();
-  Data const &data() const;
+  Data data() const;
 };
 
 inline BMS::BMS(char const *device)
@@ -42,13 +49,15 @@ inline BMS::BMS(char const *device)
 {
 }
 
-inline bool BMS::next() {
+inline bool BMS::next()
+{
   d_in >> d_currentData;
   return static_cast<bool>(d_in);
 }
 
-inline BMS::Data const &BMS::data() const {
-	return d_currentData;
+inline BMS::Data BMS::data() const
+{
+	return std::move(d_currentData);
 }
 
 #endif // INCLUDED_BMS_

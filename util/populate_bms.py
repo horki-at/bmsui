@@ -10,7 +10,7 @@ from time import sleep
 
 # BMS Information
 lifetime = 4                    # BMS works for this many seconds.
-period = 1                      # BMS sends data with this period.
+period = 1000                   # BMS sends data with this period.
 device = "./ttyVBMS"
 baud_rate = 115200
 
@@ -77,12 +77,11 @@ humidity = 65.00
 def fake_bms_msg():
     cell_voltage = np.random.normal(nominal_cell_voltage, 0.15, modules*cells)
     cell_temp_count = modules * temps
-    cell_temp = storage_temperature
+    cell_temp = [storage_temperature]
     battery_avg_temp = np.mean(cell_temp) # Spatial mean of cell temps
     pcb_temp = np.random.normal(normal_pcb_temperature, 5.0, pcb_temps)
-    humidity = np.random.normal(humidity, 1.0, 1)[0]
     voltage_low = np.random.normal(battery_low_voltage, 0.5, 1)[0]
-    voltage_pack = np.random.normal(connected_cell_voltage, 0.5, 1)[0]
+    voltage_pack = np.random.normal(connected_cell_voltage(), 0.5, 1)[0]
     current_low = battery_low_current + np.random.uniform(-0.1, 0.1)
     current_pack = np.random.normal(battery_high_current, 0.3, 1)[0]
     max_temp = np.max(cell_temp)
