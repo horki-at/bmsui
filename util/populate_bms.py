@@ -1,51 +1,99 @@
 #!/bin/env ./.venv/bin/python3
 
+# This utility generates fake BMS data for a battery pack with configurable
+# period, lifetime, baud_rate, cell count, module count, type of connections,
+# and battery cell specification.
+
 import serial
 import numpy as np
 from time import sleep
 
-# Generates fake BMS data chunk.
-# Each value is either ASCII or float `%.2f`. There are no spaces.
-# The format:
-#   - Cell Voltage: 4 modules * 40 cells = 160 values    [float]
-#   - Cell Temp:    4 modules * 12 temps = 48 values     [float]
-#   - Battery Average Temp                               [float]
-#   - PCB Temp 0, 1, 2, 3                                [float]
-#   - Humidity                                           [float]
-#   - voltageLow                                         [float]
-#   - voltagePack                                        [float]
-#   - currentLow                                         [float]
-#   - currentPack                                        [float]
-#   - maxTemp                                            [float]
-#   - minTemp                                            [float]
-#   - maxBMSTemp                                         [float]
-#   - minBMSTemp                                         [float]
-#   - avgTemp                                            [float]
-#   - maxCellVolt                                        [float]
-#   - minCellVolt                                        [float]
-#   - SoC                                                [float]
+# BMS Information
+lifetime = 4                    # BMS works for this many seconds.
+period = 1                      # BMS sends data with this period.
+device = "./ttyVBMS"
+baud_rate = 115200
+
+# Battery Pack Information
+connection = {
+    "module": {
+        "parallel": 1,          # all cells in the module are in series
+        "series": 40
+    },
+    "pack": {
+        "parallel": 4,          # all modules in the pack are in parallel
+        "series": 1
+    }
+}
+modules = 4
+cells = 40
+temps = 12
+pcb_temps = 4                   # BMS PCB temperature sensors 
+
+# Battery Cell Information: LiFePO4 18650-3.2V-1600mAh
+nominal_cell_voltage = 3.2      # V
+charge_temperature = 40         # [0-55] degrees Celcius
+discharge_temperature = 35      # [-20-60] degrees Celcius
+storage_temperature = 25        # Room temperature, [-20-55] degrees Celcius
+normal_pcb_temperature = 30     # ambient temperature + pcb heat
+
+# Calculate the expected `nominal` voltage of the battery pack that consists
+# of [modules] and [cells] connected as specified in [connection]
+def connected_cell_voltage():
+    module_voltage = connection["module"]["series"] * nominal_cell_voltage
+    pack_voltage = connection["pack"]["series"] * module_voltage
+    return pack_voltage
+
+# Battery pack output
+battery_low_voltage  = 12.0                     # to power low-voltage devices
+battery_high_voltage = connected_cell_voltage() # to power e.g. the motor
+battery_low_current = 5.0
+battery_high_current = 120
+
+# Environment information
+humidity = 65.00
+
+# Generates a fake BMS data chunk: one such chunk is a string of comma-separated
+# floating point values formatted using %.2f and where each symbol is encoded
+# in ASCII. The order of data is as follows:
+#   - cell voltage (modules * cells)
+#   - cell temperatures (modules * temps)
+#   - Battery Average Temp
+#   - PCB Temp 0, 1, 2, 3
+#   - Humidity
+#   - voltageLow
+#   - voltagePack
+#   - currentLow
+#   - currentPack
+#   - maxTemp
+#   - minTemp
+#   - maxBMSTemp
+#   - minBMSTemp
+#   - avgTemp
+#   - maxCellVolt
+#   - minCellVolt
+#   - SoC
 # [mode] indicates the mode of operation of the BMS: charging, discharging, idle.
-def fake_bms_msg(mode):
-    cell_voltage = np.random.normal(3.70, 0.15, 160) # nominal cell voltage is 3.70V
-    cell_temp = np.random.normal(32.0, 5.0, 48) if mode == "charging" else    \
-                np.random.normal(43.0, 5.0, 48) if mode == "discharging" else \
-                np.random.normal(23.0, 1.0, 48) # mode == "idle", so room temp
+def fake_bms_msg():
+    cell_voltage = np.random.normal(nominal_cell_voltage, 0.15, modules*cells)
+    cell_temp_count = modules * temps
+    cell_temp = storage_temperature
     battery_avg_temp = np.mean(cell_temp) # Spatial mean of cell temps
-    pcb_temp = np.random.normal(30.0, 5.0, 4) # PCB Temperatures
-    humidity = np.random.normal(65.0, 1.0, 1)[0]
-    voltage_low = np.random.normal(12.1, 0.5, 1)[0] # after de-amplification
-    voltage_pack = np.random.normal(np.sum(cell_voltage), 0.5, 1)[0] # all cell voltages
-    current_low = 5.0 + np.random.uniform(-0.1, 0.1)
-    current_pack = np.random.normal(120, 0.3, 1)[0] if mode == "discharging" else 0.0
+    pcb_temp = np.random.normal(normal_pcb_temperature, 5.0, pcb_temps)
+    humidity = np.random.normal(humidity, 1.0, 1)[0]
+    voltage_low = np.random.normal(battery_low_voltage, 0.5, 1)[0]
+    voltage_pack = np.random.normal(connected_cell_voltage, 0.5, 1)[0]
+    current_low = battery_low_current + np.random.uniform(-0.1, 0.1)
+    current_pack = np.random.normal(battery_high_current, 0.3, 1)[0]
     max_temp = np.max(cell_temp)
     min_temp = np.min(cell_temp)
-    BMS_temp = np.random.normal(40, 0.2, 10)
+    BMS_temp = np.random.normal(np.mean(pcb_temp), 0.2, 10)
     max_BMS_temp = np.max(BMS_temp)
     min_BMS_temp = np.min(BMS_temp)
     avg_temp = np.mean(np.concatenate([pcb_temp, cell_temp, BMS_temp]))
     max_cell_voltage = np.max(cell_voltage)
     min_cell_voltage = np.min(cell_voltage)
-    soc = 85.0
+    soc = 85.0                  # TODO: @hardcoded
 
     result = []
     result.extend(cell_voltage)     # 160
@@ -68,11 +116,6 @@ def fake_bms_msg(mode):
 
     return ",".join([f"{val:.2f}" for val in result]) + ","
 
-lifetime  = 4                   # BMS works for [lifetime] seconds
-period    = 1                   # T=1sec
-device    = "./ttyVBMS"
-baud_rate = 115200
-
 # Open the serial communication port to the BMS virtual device
 try:
     bms = serial.Serial(f"{device}", baud_rate, timeout=1)
@@ -85,8 +128,7 @@ except serial.serialutil.SerialException as err:
 print("Begin populating the BMS with data...")
 
 for count in range(0, lifetime + period, period):
-    mode = "idle"
-    msg = fake_bms_msg(mode)
+    msg = fake_bms_msg()
     bms.write(msg.encode('ascii'))
     sleep(period)
 
