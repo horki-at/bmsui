@@ -9,8 +9,8 @@ import numpy as np
 from time import sleep
 
 # BMS Information
-lifetime = 4                    # BMS works for this many seconds.
-period = 1000                   # BMS sends data with this period.
+lifetime = 1000                 # BMS works for this many seconds.
+period = 0.005                  # BMS sends data with this period.
 device = "./ttyVBMS"
 baud_rate = 115200
 
@@ -126,7 +126,7 @@ except serial.serialutil.SerialException as err:
 # Populate the BMS with data
 print("Begin populating the BMS with data...")
 
-for count in range(0, lifetime + period, period):
+for count in np.arange(0, lifetime, period):
     msg = fake_bms_msg()
     bms.write(msg.encode('ascii'))
     sleep(period)

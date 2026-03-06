@@ -12,14 +12,16 @@
 #include <string>
 using namespace std;
 
-void (*const MonitoringWindow::s_modules[])(optional<BMS::Data> const &) = {
+//static
+void (*const MonitoringWindow::s_modules[])(BMS::Data const &) = {
   &MonitoringWindow::render_demo_module,
   &MonitoringWindow::render_cell_view_module,
   &MonitoringWindow::render_general_stats_module,
-  &MonitoringWindow::render_pack_vi_module,
-  &MonitoringWindow::render_bms_vi_module,
-  &MonitoringWindow::render_bms_temp_module,
+  &MonitoringWindow::render_soc_module
 };
+
+//static
+ImGuiWindowFlags MonitoringWindow::d_windowFlags = ImGuiWindowFlags_NoCollapse;
 
 //static
 void MonitoringWindow::init()
@@ -38,7 +40,8 @@ MonitoringWindow::MonitoringWindow(std::string title, size_t width, size_t heigh
   d_width(width),
   d_height(height),
   d_window(glfwCreateWindow(width, height, title.c_str(), NULL, NULL)),
-  d_enabledModules(0)
+  d_enabledModules(0),
+  d_datacpy()
 {
   if (not d_window)
   {
@@ -55,6 +58,8 @@ MonitoringWindow::MonitoringWindow(std::string title, size_t width, size_t heigh
 
 MonitoringWindow::~MonitoringWindow()
 {
+  ImGui::PopStyleColor();
+  
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
@@ -77,12 +82,23 @@ void MonitoringWindow::setup_imgui_context() const
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; 
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+  // Load the font
+  // TODO: separate font path variable or macro
+  // TODO: control of the font size
+  ImFont *font = io.Fonts->AddFontFromFileTTF("./assets/iosevka-regular.ttf", 24.0f);
+  ImGui::PushFont(font);
+
+  // Disable TitleBgActive
+  ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImGui::GetStyleColorVec4(ImGuiCol_TitleBg));
+
+  // Setup GLFW3 and OpenGL backend
   ImGui_ImplGlfw_InitForOpenGL(d_window, true);
   ImGui_ImplOpenGL3_Init();
 }
 
-void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer) const
+void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer)
 {
 	while (not glfwWindowShouldClose(d_window))
   {
@@ -94,11 +110,22 @@ void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer) const
 
     // Obtain the last available data from the ring buffer.
     optional<BMS::Data> const data = buffer.try_pop();
+    if (data)                   // the ring had up-to-date Data
+      d_datacpy = *data;        // copy it to the Data copy
+
+    // Start a new ImGui frame
+    if (d_enabledModules != 0) { // if some module is enabled, create the frame
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+    }
+
+    ImGui::DockSpaceOverViewport();
 
     // Render enabled modules
     for (size_t i = 0; i != static_cast<size_t>(Module::N_MODULE); ++i)
       if (d_enabledModules.test(i))
-        (*s_modules[i])(data);
+        (*s_modules[i])(d_datacpy);
 
     // Render ImGui frames (if any)
     if (ImGui::GetFrameCount())
@@ -109,14 +136,6 @@ void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer) const
 
     glfwSwapBuffers(d_window);
   }
-}
-
-// Creates a new ImGui frame.
-static void create_new_frame()
-{
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
 }
 
 //static
@@ -130,38 +149,125 @@ void MonitoringWindow::key_callback(GLFWwindow *window, int key, int scancode,
 }
 
 //static
+DEFINE_RENDER_MODULE(demo)
+{
+  ImGui::ShowDemoWindow();
+}
+
+#define TEMP_TOO_COLD_COLOR ImVec4(0.0, 0.5, 1.0, 1.0)
+#define TEMP_OPTIMAL_COLOR ImVec4(0.0, 1.0, 0.0, 1.0)
+#define TEMP_WARNING_COLOR ImVec4(1.0, 0.8, 0.0, 1.0)
+#define TEMP_TOO_HOT_COLOR ImVec4(1.0, 0.0, 0.0, 1.0)
+
+// Get the color to a button box that represents the cell with the given temp.
+static ImVec4 get_cell_color(float temp)
+{
+  float const too_cold = BMS::cellTempInfo[BMS::IDLE][BMS::TOO_COLD];
+  float const optimal = BMS::cellTempInfo[BMS::IDLE][BMS::OPTIMAL];
+  float const warning = BMS::cellTempInfo[BMS::IDLE][BMS::WARNING];
+  float const too_hot = BMS::cellTempInfo[BMS::IDLE][BMS::TOO_HOT];
+  
+  // TODO: distinguish between modes (CHARGING, DISCHARGING, IDLE)
+  static auto lerp = [](ImVec4 from, ImVec4 to, float t) -> ImVec4 {
+    return ImVec4(from.x + (to.x - from.x) * t, // Red
+                  from.y + (to.y - from.y) * t, // Green
+                  from.z + (to.z - from.z) * t, // Blue
+                  1.0);                         // Alpha
+  };
+
+  if (temp <= too_cold)
+    return TEMP_TOO_COLD_COLOR;
+  else if (temp >= too_hot)
+    return TEMP_TOO_HOT_COLOR;
+  else if (temp < optimal)      // <too_COLD, OPTIMAL>
+    return lerp(TEMP_TOO_COLD_COLOR,
+                TEMP_OPTIMAL_COLOR,
+                (temp - too_cold) / (optimal - too_cold));
+  else if (temp < warning)      // <OPTIMAL, WARNING> 
+    return lerp(TEMP_OPTIMAL_COLOR,
+                TEMP_WARNING_COLOR,
+                (temp - optimal) / (warning - optimal));
+  else                          // <WARNING, HOT>
+    return lerp(TEMP_WARNING_COLOR,
+                TEMP_TOO_HOT_COLOR,
+                (temp - warning) / (too_hot - warning));
+}
+
+//static
 DEFINE_RENDER_MODULE(cell_view)
 {
-  // TODO: implement this
+  ImGui::Begin("CELL VIEW", NULL, d_windowFlags);
+
+  // For each battery module, display a group of individual cells
+  for (size_t module_idx = 0; module_idx != BMS::modules; ++module_idx)
+  {
+    ImGui::Text("Module %zu", module_idx + 1);
+
+    // Prepare the grid style
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1)); // grid spacing 
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f); // strict corners
+
+    for (size_t parallel_idx = 0; parallel_idx != BMS::parallel; ++parallel_idx)
+    {
+      for (size_t series_idx = 0; series_idx != BMS::series; ++series_idx)
+      {
+        size_t const cell_index = BMS::cell_id(module_idx, parallel_idx, series_idx);
+        size_t const temp_index = BMS::temp_id(module_idx, parallel_idx, series_idx);
+        ImVec4 const color = get_cell_color(UNPACK(cellTemps)[temp_index]);
+
+        ImGui::PushID(cell_index);
+        ImGui::PushStyleColor(ImGuiCol_Button, color);
+        ImGui::Button("##cellbtn", ImVec2(25, 25));
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Cell [M:%zu, P:%zu, S:%zu]\nVoltage %.2f\nTemperature %.2f",
+                            module_idx + 1, parallel_idx, series_idx,
+                            UNPACK(cellVolts)[cell_index],
+                            UNPACK(cellTemps)[temp_index]);
+        ImGui::PopStyleColor();
+        ImGui::PopID();
+
+        if (series_idx != BMS::series - 1)
+          ImGui::SameLine();
+      }
+    }
+
+    ImGui::PopStyleVar(2);      // 2: grid spacing, strict corners
+  }
+
+  ImGui::End();
 }
 
 //static
 DEFINE_RENDER_MODULE(general_stats)
 {
-  // TODO: implement this
+  ImGui::Begin("GENERAL STATISTICS", NULL, d_windowFlags);
+
+  // Display general statistics on the cell level
+  ImGui::TextColored(ImVec4(1, 0, 0, 1), "Cell Level");
+  ImGui::Text("Highest cell temperature: %.2f", UNPACK(maxTemp));
+  ImGui::Text("Lowest cell temperature: %.2f", UNPACK(minTemp));
+  ImGui::Text("Average cell temperature: %.2f", UNPACK(avgTemp));
+  ImGui::Text("Highest cell voltage: %.2f", UNPACK(maxCellVolt));
+  ImGui::Text("Lowest cell voltage: %.2f", UNPACK(minCellVolt));
+  
+  // Display general statistics on the pack level
+  ImGui::TextColored(ImVec4(1, 0, 0, 1), "Pack Level");
+  ImGui::Text("System high voltage: %.2f", UNPACK(voltPack));
+  ImGui::Text("System high current: %.2f", UNPACK(currPack));
+  ImGui::Text("System low voltage: %.2f", UNPACK(voltLow));
+  ImGui::Text("System low current: %.2f", UNPACK(currLow));
+
+  // Display general statistics on the BMS level
+  ImGui::TextColored(ImVec4(1, 0, 0, 1), "BMS Level");
+  ImGui::Text("BMS temperature: %.2f", UNPACK(avgTemp));
+
+  ImGui::End();
 }
 
 //static
-DEFINE_RENDER_MODULE(pack_vi)
+DEFINE_RENDER_MODULE(soc)
 {
-  // TODO: implement this
-}
-
-//static
-DEFINE_RENDER_MODULE(bms_vi)
-{
-  // TODO: implement this
-}
-
-//static
-DEFINE_RENDER_MODULE(bms_temp)
-{
-  // TODO: implement this
-}
-
-//static
-DEFINE_RENDER_MODULE(demo)
-{
-  create_new_frame();
-  ImGui::ShowDemoWindow();
+  ImGui::Begin("CHARGE PERCENTAGE", NULL, d_windowFlags);
+  ImGui::ProgressBar(UNPACK(soc));
+  ImGui::End();
 }

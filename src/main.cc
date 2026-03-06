@@ -2,7 +2,7 @@
 #include "bms.hh"
 #include "monitoring_window.hh"
 
-#include <iostream> // Remove this
+#include <iostream>
 #include <thread>
 #include <string>
 using namespace std;
@@ -20,14 +20,16 @@ int main()
   MonitoringWindow window("BMSUI - "s + bmsdevice);
 
   // Enalbe wanted views of data
-  window.enable(MonitoringWindow::Module::DEMO);
+  window.enable(MonitoringWindow::Module::GENERAL_STATS);
+  window.enable(MonitoringWindow::Module::CELL_VIEW);
+  window.enable(MonitoringWindow::Module::SOC);
 
   // Render the monitoring window
   Ring<BMS::Data, 64> ring;
   jthread producer{[&]()
   {
-    bms.next();                 // TODO: what if this is EOF?
-    ring.push(bms.data());
+    while(bms.next())           // TODO: what if this is EOF?
+      ring.push(bms.data());
   }};
 
   // Start rendering the monitoring window

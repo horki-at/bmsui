@@ -31,3 +31,23 @@ istream &operator>>(istream &in, BMS::Data &data)
 
   return in;
 }
+
+//static
+size_t BMS::cell_id(size_t module_idx, size_t parallel_idx, size_t series_idx)
+{
+  size_t const inner_idx = BMS::series * parallel_idx + series_idx;
+  size_t const outer_idx = BMS::cells * module_idx + inner_idx;
+  return outer_idx;
+}
+
+//static
+size_t BMS::temp_id(size_t module_idx, size_t parallel_idx, size_t series_idx)
+{
+  // TODO, NOTE: @important This function must be implemented in accordance with
+  // the way the temperature sensor is actually connected in the battery
+  // pack. Right now, the assumption is that every cells in series (10) have 3
+  // temperature sensors (12 / 4, 4 - parallel cell groups)
+  size_t const inner_idx = (BMS::series * parallel_idx + series_idx) % (BMS::temps / BMS::series);
+  size_t const outer_idx = BMS::temps * module_idx + inner_idx;
+  return outer_idx;
+}

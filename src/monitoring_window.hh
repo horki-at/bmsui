@@ -1,6 +1,8 @@
 #ifndef INCLUDED_MONITORING_WINDOW_
 #define INCLUDED_MONITORING_WINDOW_
 
+#include "imgui.h"
+
 #include "bms.hh"
 #include "ring.hh"
 
@@ -11,22 +13,22 @@
 // forward declarations
 class GLFWwindow;
 
+#define UNPACK(varname) (data.varname)
 #define DECLARE_RENDER_MODULE(name)                                            \
-static void render_##name##_module(std::optional<BMS::Data> const &data);
+static void render_##name##_module(BMS::Data const &data);
 #define DEFINE_RENDER_MODULE(name)                                             \
-void MonitoringWindow::render_##name##_module(optional<BMS::Data> const &data)
+void MonitoringWindow::render_##name##_module(BMS::Data const &data)
 
 // TODO: @priority1 @bug exiting window is lagging.
 class MonitoringWindow
 {
 public:
-  enum class Module {           // NOTE: Keep this order.
+  enum class Module
+  {                             // NOTE: Keep this order.
     DEMO          = 0,          // render_demo_module
     CELL_VIEW     = 1,          // render_cell_module
     GENERAL_STATS = 2,          // render_general_stats_module
-    PACK_VI       = 3,          // render_pack_vi_module
-    BMS_VI        = 4,          // render_bms_vi_module
-    BMS_TEMP      = 5,          // render_bms_temp_module
+    SOC           = 3,          // render_soc_module
     N_MODULE,
   };
 
@@ -35,7 +37,12 @@ private:
   GLFWwindow *d_window;
 
   std::bitset<static_cast<size_t>(Module::N_MODULE)> d_enabledModules;
-  static void (*const s_modules[])(std::optional<BMS::Data> const & data);
+  static void (*const s_modules[])(BMS::Data const & data);
+
+  static ImGuiWindowFlags d_windowFlags;
+
+  BMS::Data d_datacpy;          // the last copy of Data, used when there is no
+                                // input from the circular Data buffer.
   
 public:
   explicit MonitoringWindow(std::string title,
@@ -51,7 +58,7 @@ public:
   void enable(Module module); 
   void disable(Module module);
 
-  void render(Ring<BMS::Data, 64> &buffer) const;
+  void render(Ring<BMS::Data, 64> &buffer);
 
   // Initialize rendering backends. This function must be manually called before
   // constructing an instance of MonitorWindow.
@@ -65,12 +72,10 @@ private:
                            int action, int mods);
 
   // Available modules that can be enabled using the appropriate Module flag.
+  DECLARE_RENDER_MODULE(demo);
   DECLARE_RENDER_MODULE(cell_view);
   DECLARE_RENDER_MODULE(general_stats);
-  DECLARE_RENDER_MODULE(pack_vi);
-  DECLARE_RENDER_MODULE(bms_vi);
-  DECLARE_RENDER_MODULE(bms_temp);
-  DECLARE_RENDER_MODULE(demo);
+  DECLARE_RENDER_MODULE(soc);
 };
 
 inline void MonitoringWindow::enable(Module module)
