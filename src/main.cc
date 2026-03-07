@@ -19,19 +19,17 @@ int main()
   // Initialize the monitoring window.
   MonitoringWindow window("BMSUI - "s + bmsdevice);
 
-  // Enalbe wanted views of data
+  // Enable wanted views of data
   window.enable(MonitoringWindow::Module::GENERAL_STATS);
   window.enable(MonitoringWindow::Module::CELL_VIEW);
   window.enable(MonitoringWindow::Module::SOC);
 
   // Render the monitoring window
   Ring<BMS::Data, 64> ring;
-  jthread producer{[&]()
-  {
+  jthread producer{[&]() {
     while(bms.next())           // TODO: what if this is EOF?
       ring.push(bms.data());
   }};
 
-  // Start rendering the monitoring window
   window.render(ring);
 }

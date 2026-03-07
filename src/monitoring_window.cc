@@ -268,6 +268,6 @@ DEFINE_RENDER_MODULE(general_stats)
 DEFINE_RENDER_MODULE(soc)
 {
   ImGui::Begin("CHARGE PERCENTAGE", NULL, d_windowFlags);
-  ImGui::ProgressBar(UNPACK(soc));
+  ImGui::ProgressBar(UNPACK(soc) / 100); // convert from 100% to fractions
   ImGui::End();
 }
