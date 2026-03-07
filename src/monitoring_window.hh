@@ -4,7 +4,6 @@
 #include "imgui.h"
 
 #include "bms.hh"
-#include "ring.hh"
 
 #include <string>
 #include <bitset>
@@ -35,6 +34,7 @@ public:
 private:
   size_t d_width, d_height;
   GLFWwindow *d_window;
+  BMS d_bms;
 
   std::bitset<static_cast<size_t>(Module::N_MODULE)> d_enabledModules;
   static void (*const s_modules[])(BMS::Data const & data);
@@ -58,7 +58,7 @@ public:
   void enable(Module module); 
   void disable(Module module);
 
-  void render(Ring<BMS::Data, 64> &buffer);
+  void render();
 
   // Initialize rendering backends. This function must be manually called before
   // constructing an instance of MonitorWindow.
@@ -70,6 +70,9 @@ private:
 
   static void key_callback(GLFWwindow *window, int key, int scancode,
                            int action, int mods);
+
+  // Renders the main menu
+  void menu() const;
 
   // Available modules that can be enabled using the appropriate Module flag.
   DECLARE_RENDER_MODULE(demo);

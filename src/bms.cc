@@ -32,6 +32,22 @@ istream &operator>>(istream &in, BMS::Data &data)
   return in;
 }
 
+bool BMS::open_device(std::string const &device)
+{
+  d_in.close();                 // close previously opened streams
+  d_in.open(device);            // try opening the device
+
+  if (not d_in.is_open())
+    return false;
+
+  // start the producing of data
+  d_producer = jthread{[this](){
+    while (next()) d_buffer.push(move(d_currentData));
+  }};
+  
+  return true;
+}
+
 //static
 size_t BMS::cell_id(size_t module_idx, size_t parallel_idx, size_t series_idx)
 {

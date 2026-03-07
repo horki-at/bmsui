@@ -1,35 +1,34 @@
-#include "ring.hh"
-#include "bms.hh"
 #include "monitoring_window.hh"
-
 #include <iostream>
-#include <thread>
-#include <string>
 using namespace std;
 
-int main()
+int processException(exception_ptr eptr) try
+{
+  if (eptr)
+    rethrow_exception(eptr);
+  return 0;                     // no exception here.
+}
+catch (exception const &exc)
+{
+  cerr << exc.what() << "\n";
+  return 1;
+}
+
+int main() try
 {
   // Initialize all the subsystems.
   MonitoringWindow::init();
-  
-  // Open the stream to the BMS UART input (via UBS adaptor).
-  char const *bmsdevice = "./ttyVAPP";
-  BMS bms(bmsdevice);
-
-  // Initialize the monitoring window.
-  MonitoringWindow window("BMSUI - "s + bmsdevice);
+  MonitoringWindow window("BMSUI - Battery Management System User Interface");
 
   // Enable wanted views of data
+  window.enable(MonitoringWindow::Module::DEMO);
   window.enable(MonitoringWindow::Module::GENERAL_STATS);
   window.enable(MonitoringWindow::Module::CELL_VIEW);
   window.enable(MonitoringWindow::Module::SOC);
 
-  // Render the monitoring window
-  Ring<BMS::Data, 64> ring;
-  jthread producer{[&]() {
-    while(bms.next())           // TODO: what if this is EOF?
-      ring.push(bms.data());
-  }};
-
-  window.render(ring);
+  window.render();
+}
+catch (...)
+{
+  return processException(current_exception());
 }

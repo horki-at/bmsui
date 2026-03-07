@@ -40,6 +40,7 @@ MonitoringWindow::MonitoringWindow(std::string title, size_t width, size_t heigh
   d_width(width),
   d_height(height),
   d_window(glfwCreateWindow(width, height, title.c_str(), NULL, NULL)),
+  d_bms(),
   d_enabledModules(0),
   d_datacpy()
 {
@@ -85,9 +86,7 @@ void MonitoringWindow::setup_imgui_context() const
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   // Load the font
-  // TODO: separate font path variable or macro
-  // TODO: control of the font size
-  ImFont *font = io.Fonts->AddFontFromFileTTF("./assets/iosevka-regular.ttf", 24.0f);
+  ImFont *font = io.Fonts->AddFontFromFileTTF("./assets/iosevka-regular.ttf", 28.0f);
   ImGui::PushFont(font);
 
   // Disable TitleBgActive
@@ -98,7 +97,22 @@ void MonitoringWindow::setup_imgui_context() const
   ImGui_ImplOpenGL3_Init();
 }
 
-void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer)
+void MonitoringWindow::menu() const
+{
+  if (ImGui::BeginMainMenuBar())
+  {
+    if (ImGui::BeginMenu("Device"))
+    {
+      // TODO: @continue
+
+      ImGui::EndMenu();
+    }
+    
+    ImGui::EndMainMenuBar();
+  }
+}
+
+void MonitoringWindow::render()
 {
 	while (not glfwWindowShouldClose(d_window))
   {
@@ -109,7 +123,7 @@ void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer)
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Obtain the last available data from the ring buffer.
-    optional<BMS::Data> const data = buffer.try_pop();
+    optional<BMS::Data> const data = d_bms.buffer().try_pop();
     if (data)                   // the ring had up-to-date Data
       d_datacpy = *data;        // copy it to the Data copy
 
@@ -121,6 +135,9 @@ void MonitoringWindow::render(Ring<BMS::Data, 64> &buffer)
     }
 
     ImGui::DockSpaceOverViewport();
+
+    // Render the main menu bar
+    menu();
 
     // Render enabled modules
     for (size_t i = 0; i != static_cast<size_t>(Module::N_MODULE); ++i)
@@ -162,12 +179,11 @@ DEFINE_RENDER_MODULE(demo)
 // Get the color to a button box that represents the cell with the given temp.
 static ImVec4 get_cell_color(float temp)
 {
-  float const too_cold = BMS::cellTempInfo[BMS::IDLE][BMS::TOO_COLD];
-  float const optimal = BMS::cellTempInfo[BMS::IDLE][BMS::OPTIMAL];
-  float const warning = BMS::cellTempInfo[BMS::IDLE][BMS::WARNING];
-  float const too_hot = BMS::cellTempInfo[BMS::IDLE][BMS::TOO_HOT];
+  float const too_cold = BMS::cellTempInfo[BMS::TOO_COLD];
+  float const optimal = BMS::cellTempInfo[BMS::OPTIMAL];
+  float const warning = BMS::cellTempInfo[BMS::WARNING];
+  float const too_hot = BMS::cellTempInfo[BMS::TOO_HOT];
   
-  // TODO: distinguish between modes (CHARGING, DISCHARGING, IDLE)
   static auto lerp = [](ImVec4 from, ImVec4 to, float t) -> ImVec4 {
     return ImVec4(from.x + (to.x - from.x) * t, // Red
                   from.y + (to.y - from.y) * t, // Green
