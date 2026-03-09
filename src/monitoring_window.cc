@@ -1,4 +1,5 @@
 #include "monitoring_window.hh"
+#include "graph.hh"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -6,22 +7,49 @@
 #define GLFW_INCLUDE_NONE
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "implot.h"
 
+#include <format>
 #include <optional>
 #include <iostream>
+#include <algorithm>
 #include <string>
 using namespace std;
+
+#define PLOT_SIZE 256
+static Graph<PLOT_SIZE, 0.0f, 140.f> s_high_voltage;
+static Graph<PLOT_SIZE, 0.0f, 13.f> s_low_voltage;
+static Graph<PLOT_SIZE> s_high_current;
+static Graph<PLOT_SIZE> s_low_current;
+
+static void clear_graphs()
+{
+  s_high_voltage.clear();
+  s_low_voltage.clear();
+  s_high_current.clear();
+  s_low_current.clear();
+}
 
 //static
 void (*const MonitoringWindow::s_modules[])(BMS::Data const &) = {
   &MonitoringWindow::render_demo_module,
   &MonitoringWindow::render_cell_view_module,
   &MonitoringWindow::render_general_stats_module,
-  &MonitoringWindow::render_soc_module
+  &MonitoringWindow::render_soc_module,
+  &MonitoringWindow::render_sys_volt_graph_module,
+  &MonitoringWindow::render_sys_curr_graph_module,
+  &MonitoringWindow::render_console_module,
+  &MonitoringWindow::render_simulator_module
 };
 
 //static
-ImGuiWindowFlags MonitoringWindow::d_windowFlags = ImGuiWindowFlags_NoCollapse;
+ImGuiWindowFlags MonitoringWindow::s_windowFlags = ImGuiWindowFlags_NoCollapse;
+bool MonitoringWindow::s_openRealDeviceFlag = false;
+bool MonitoringWindow::s_simulateVirtualDeviceFlag = false;
+bool MonitoringWindow::s_closeSimulationFlag = false;
+bool MonitoringWindow::s_clearConsoleFlag = false;
+vector<string> MonitoringWindow::s_consoleBuffer{};
+Simulator MonitoringWindow::s_simulator{};
 
 //static
 void MonitoringWindow::init()
@@ -35,7 +63,8 @@ void MonitoringWindow::init()
 }
 
 //explicit
-MonitoringWindow::MonitoringWindow(std::string title, size_t width, size_t height)
+MonitoringWindow::MonitoringWindow(std::string title,
+                                   size_t width, size_t height)
 :
   d_width(width),
   d_height(height),
@@ -59,11 +88,14 @@ MonitoringWindow::MonitoringWindow(std::string title, size_t width, size_t heigh
 
 MonitoringWindow::~MonitoringWindow()
 {
+  if (s_simulator.running()) s_simulator.kill();
+  
   ImGui::PopStyleColor();
   
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
+  ImPlot::DestroyContext();
   glfwDestroyWindow(d_window);
   glfwTerminate();
 }
@@ -80,6 +112,7 @@ void MonitoringWindow::setup_imgui_context() const
   // This code was copy pasted from ImGui setup documentation (for GLFW/OpenGl)
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; 
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
@@ -97,18 +130,84 @@ void MonitoringWindow::setup_imgui_context() const
   ImGui_ImplOpenGL3_Init();
 }
 
-void MonitoringWindow::menu() const
+void MonitoringWindow::openRealDevice()
 {
+  consoleWrite("[ERROR]: openRealDevice is not implemented.");
+  s_openRealDeviceFlag = false; // reset the flag
+}
+
+// TODO: @platform-dependent this function is platform dependent. For now, it
+// works by assuming the linux environment and calling the
+// ../util/start_comm.sh bash utility.
+void MonitoringWindow::simulateVirtualDevice() try
+{
+  clear_graphs();
+  s_simulator.start();
+
+  if (not d_bms.open_device(s_simulator.app()))
+    consoleWrite("[ERROR]: couldn't open "s + s_simulator.app());
+
+  // start the module
+  enable(Module::SIMULATOR);
+}
+catch (exception const &exc)
+{
+  consoleWrite("[ERROR]: "s + exc.what());
+}
+
+void MonitoringWindow::closeSimulation() try
+{
+  clear_graphs();
+  d_datacpy = {};
+  s_simulator.kill();
+  disable(Module::SIMULATOR);
+}
+catch (exception const &exc)
+{
+  consoleWrite("[ERROR]: "s + exc.what());
+}
+
+void MonitoringWindow::menu()
+{
+  // Show menu options
   if (ImGui::BeginMainMenuBar())
   {
     if (ImGui::BeginMenu("Device"))
     {
-      // TODO: @continue
-
+      ImGui::MenuItem("Open real device", NULL, &s_openRealDeviceFlag);
+      ImGui::MenuItem("Simulate virtual device", NULL, &s_simulateVirtualDeviceFlag);
+      ImGui::MenuItem("Close simulation", NULL, &s_closeSimulationFlag);
+      ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Extra"))
+    {
+      ImGui::MenuItem("Clear console", "C", &s_clearConsoleFlag);
       ImGui::EndMenu();
     }
     
     ImGui::EndMainMenuBar();
+  }
+
+  // Process menu flags
+  if (s_clearConsoleFlag)
+  {
+    clearConsoleBuffer();
+    s_clearConsoleFlag = false;
+  }
+  if (s_openRealDeviceFlag)
+  {
+    openRealDevice();
+    s_openRealDeviceFlag = false;
+  }
+  if (s_simulateVirtualDeviceFlag)
+  {
+    simulateVirtualDevice();
+    s_simulateVirtualDeviceFlag = false;
+  }
+  if (s_closeSimulationFlag)
+  {
+    closeSimulation();
+    s_closeSimulationFlag = false;
   }
 }
 
@@ -161,8 +260,8 @@ void MonitoringWindow::key_callback(GLFWwindow *window, int key, int scancode,
 {
   if (key == GLFW_KEY_ESCAPE and action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, 1); // close the window 
-  if (key == GLFW_KEY_E and action == GLFW_PRESS)
-    cout << "you pressed E\n";
+  if (key == GLFW_KEY_C and action == GLFW_PRESS)
+    clearConsoleBuffer();
 }
 
 //static
@@ -212,7 +311,7 @@ static ImVec4 get_cell_color(float temp)
 //static
 DEFINE_RENDER_MODULE(cell_view)
 {
-  ImGui::Begin("CELL VIEW", NULL, d_windowFlags);
+  ImGui::Begin("CELL VIEW", NULL, s_windowFlags);
 
   // For each battery module, display a group of individual cells
   for (size_t module_idx = 0; module_idx != BMS::modules; ++module_idx)
@@ -256,7 +355,7 @@ DEFINE_RENDER_MODULE(cell_view)
 //static
 DEFINE_RENDER_MODULE(general_stats)
 {
-  ImGui::Begin("GENERAL STATISTICS", NULL, d_windowFlags);
+  ImGui::Begin("GENERAL STATISTICS", NULL, s_windowFlags);
 
   // Display general statistics on the cell level
   ImGui::TextColored(ImVec4(1, 0, 0, 1), "Cell Level");
@@ -283,7 +382,121 @@ DEFINE_RENDER_MODULE(general_stats)
 //static
 DEFINE_RENDER_MODULE(soc)
 {
-  ImGui::Begin("CHARGE PERCENTAGE", NULL, d_windowFlags);
+  ImGui::Begin("CHARGE PERCENTAGE", NULL, s_windowFlags);
   ImGui::ProgressBar(UNPACK(soc) / 100); // convert from 100% to fractions
+  ImGui::End();
+}
+
+static inline void setup_plot_style(char const *xlabel, char const *ylabel)
+{
+  ImPlot::SetupAxes(xlabel, ylabel,
+                    ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoTickLabels |
+                    ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks,
+                    ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoGridLines |
+                    ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels);
+}
+
+DEFINE_RENDER_MODULE(sys_volt_graph)
+{
+  ImGui::Begin("SYSTEM VOLTAGE GPAPHS");
+
+  // update the graphs with new incoming data.
+  s_high_voltage.add(ImGui::GetTime(), UNPACK(voltPack));
+  s_low_voltage.add(ImGui::GetTime(), UNPACK(voltLow));
+
+  ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 10.f));
+  // plot the graphs
+  if (ImPlot::BeginPlot("##x"))
+  {
+    setup_plot_style("time [s]", "voltage [V]");
+    ImPlot::PlotLine("System High Voltage",
+                     s_high_voltage.x(),
+                     s_high_voltage.y(),
+                     PLOT_SIZE);
+    ImPlot::EndPlot();
+  }
+  ImGui::Separator();
+  if (ImPlot::BeginPlot("##xx"))
+  {
+    setup_plot_style("time [s]", "voltage [V]");
+    ImPlot::PlotLine("System Low Voltage",
+                     s_low_voltage.x(),
+                     s_low_voltage.y(),
+                     PLOT_SIZE);
+    ImPlot::EndPlot();
+  }
+  ImPlot::PopStyleVar();
+  
+  ImGui::End();
+}
+
+DEFINE_RENDER_MODULE(sys_curr_graph)
+{
+  ImGui::Begin("SYSTEM CURRENT GPAPHS");
+
+  // update the graphs with new incoming data.
+  s_high_current.add(ImGui::GetTime(), UNPACK(currPack));
+  s_low_current.add(ImGui::GetTime(), UNPACK(currLow));
+
+  // plot the graphs
+  ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 10.f));
+  if (ImPlot::BeginPlot("##x"))
+  {
+    setup_plot_style("time [s]", "current [A]");
+    ImPlot::PlotLine("System High Current",
+                     s_high_current.x(),
+                     s_high_current.y(),
+                     PLOT_SIZE);
+    ImPlot::EndPlot();
+  }
+  ImGui::Separator();
+  if (ImPlot::BeginPlot("##xx"))
+  {
+    setup_plot_style("time [s]", "current [A]");
+    ImPlot::PlotLine("System Low Current",
+                     s_low_current.x(),
+                     s_low_current.y(),
+                     PLOT_SIZE);
+    ImPlot::EndPlot();
+  }
+  ImPlot::PopStyleVar();
+  
+  ImGui::End();
+}
+
+//static
+DEFINE_RENDER_MODULE(console)
+{
+  ImGui::Begin("CONSOLE", NULL, s_windowFlags);
+  for_each(s_consoleBuffer.begin(), s_consoleBuffer.end(),
+           [](string const &msg)
+           {
+             ImGui::Text("%s", msg.c_str());
+           });
+  ImGui::End();
+}
+
+//static
+DEFINE_RENDER_MODULE(simulator)
+{
+  ImGui::Begin("SIMULATOR", NULL, s_windowFlags);
+  // IDLE Mode
+  if (ImGui::Button("Disconnect the battery"))
+    s_simulator.send_cmd(Command::IDLE);
+
+  // CHARGE Mode
+  static float s_charge_current = 10.0;
+  if (ImGui::Button("Charge the battery"))
+    s_simulator.send_cmd(Command::CHARGE, s_charge_current);
+  ImGui::SameLine();
+  ImGui::InputFloat("Charging current [A]", &s_charge_current, 10.f, 0, "%.2f");
+
+  // DISCHARGE Mode
+  static float s_discharge_load = 300.0;
+  if (ImGui::Button("Discharge the battery"))
+    s_simulator.send_cmd(Command::DISCHARGE, s_discharge_load);
+  ImGui::SameLine();
+  ImGui::InputFloat("Load resistance [Ω]", &s_discharge_load, 300.f, 0, "%.2f");
+
   ImGui::End();
 }

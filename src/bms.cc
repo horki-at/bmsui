@@ -1,14 +1,24 @@
 #include "bms.hh"
+#include <sstream>
 using namespace std;
 
 istream &operator>>(istream &in, BMS::Data &data)
 {
-  auto nextValue = [&in]() -> float
+  string line;
+  if (not getline(in, line))
+    return in;
+
+  stringstream ss(line);
+  string token;
+  
+  auto nextValue = [&]() -> float {
+    if (getline(ss, token, BMS::sep))
     {
-      if (string line; getline(in, line, BMS::sep))
-        return stof(line);
-      return 0.0f;
-    };
+      if (token.empty()) return 0.0f;
+      else               return stof(token);
+    }
+    return 0.0f;
+  };
 
   // Read BMS data in the right order.
   for (float &val : data.cellVolts) val = nextValue();
@@ -42,7 +52,8 @@ bool BMS::open_device(std::string const &device)
 
   // start the producing of data
   d_producer = jthread{[this](){
-    while (next()) d_buffer.push(move(d_currentData));
+    while (next())
+      d_buffer.push(move(d_currentData));
   }};
   
   return true;
@@ -59,7 +70,7 @@ size_t BMS::cell_id(size_t module_idx, size_t parallel_idx, size_t series_idx)
 //static
 size_t BMS::temp_id(size_t module_idx, size_t parallel_idx, size_t series_idx)
 {
-  // TODO, NOTE: @important This function must be implemented in accordance with
+  // NOTE: @important This function must be implemented in accordance with
   // the way the temperature sensor is actually connected in the battery
   // pack. Right now, I map the linear index of each cell to consecutive
   // temperature sensor. In practice, this probably won't be the case.

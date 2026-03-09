@@ -3,7 +3,7 @@
 .PHONY: build clean
 
 CC  := gcc
-CXX := g++ -std=c++26 -Wall -Werror -pedantic
+CXX := g++ -std=c++26 -Wall -pedantic
 
 # Vendor: glad 
 GLAD_TARGET  := vendor/glad/src/glad.o
@@ -27,12 +27,12 @@ $(GLFW_TARGET):
 # as advised by the install tutorial.
 TARGET := bmsui
 
-SOURCES := $(wildcard src/*.cc vendor/imgui/*.cpp)     \
-           vendor/imgui/backends/imgui_impl_glfw.cpp   \
+SOURCES := $(wildcard src/*.cc vendor/imgui/*.cpp vendor/implot/*.cpp)    \
+           vendor/imgui/backends/imgui_impl_glfw.cpp                      \
            vendor/imgui/backends/imgui_impl_opengl3.cpp
 OBJECTS := $(patsubst %.cc,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
 DEPS := $(OBJECTS:.o=.o.dep)
-INCLUDE := -Isrc/ -Ivendor/imgui/ -Ivendor/imgui/backends/ $(GLAD_INCLUDE) $(GLFW_INCLUDE) 
+INCLUDE := -Isrc/ -Ivendor/imgui/ -Ivendor/implot/ -Ivendor/imgui/backends/ $(GLAD_INCLUDE) $(GLFW_INCLUDE) 
 LDFLAGS := -lGL $(GLFW_LIBRARY)
 
 vpath %.cc $(dir $(SOURCES))

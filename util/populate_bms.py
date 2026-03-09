@@ -5,6 +5,8 @@
 # and battery cell specification.
 
 import serial
+import sys
+import os
 import threading
 import numpy as np
 # from itertools import product
@@ -20,7 +22,8 @@ class Environment:
 @dataclass
 class BatteryCell:
     """ Class for storing information and simulating a single battery cell. """
-    V_nominal: float    # V, Nominal voltage value [datasheet + manufacturer err]
+    V_nominal_max: float # V, Max nominal voltage value (at soc = 100%)
+    V_nominal_min: float # V, Min nominal voltage value (at soc = 0%)
     Q_max: float        # mAh, Battery capacity [datasheet + manufacturer err]
     mass: float         # kg, Mass of the battery
     Z_internal: float   # Ohm, Internal impedance (assumed to be REAL)
@@ -30,31 +33,44 @@ class BatteryCell:
     T: float            # degrees Celcius, Current battery cell temperature
     soc: float          # %, Current battery cell state of charge
 
+    def __fluctuations(self):
+        self.V = self.__get_ocv() + np.random.normal(0.0, 0.043)
+
     def __update_temp(self, I: float, dt:float, ambient: Environment):
         heat = I*I*self.Z_internal              # Joule heat power
         cool = ambient.K * (self.T - ambient.T) # loss to environment power
         dT = (heat - cool) * dt / self.thermal_cap / self.mass
-        self.T += dT
+        self.T += dT + np.random.normal(0.0, 0.000001)
+
+    # This simulates the open circuit voltage of the battery cell based on its
+    # state of charge
+    def __get_ocv(self) -> float:
+        if self.soc < 0.05:
+            return 0.0
+        return max(0.0, self.V_nominal_min + (self.V_nominal_max - self.V_nominal_min) * (self.soc / 100.0))
 
     # Charge the battery cell with constant DC current I for some time dt (in sec)
     def charge(self, I: float, dt: float, ambient: Environment):
         self.soc = self.soc + I*(dt/3600)*self.efficiency/(self.Q_max/1000)*100
         self.soc = min(self.soc, 100)
-        self.V = self.V_nominal + self.Z_internal*I
+        self.V = self.__get_ocv() + self.Z_internal*I
         self.__update_temp(I, dt, ambient)
+        self.__fluctuations()
 
     # Discharge the battery cell with some constant load resistance R_load for some time dt.
     def discharge(self, I_load: float, dt: float, ambient: Environment):
         self.soc = self.soc - I_load*dt*self.efficiency/(self.Q_max/1000)*100
         self.soc = max(self.soc, 0)
-        self.V = self.V_nominal - I_load * self.Z_internal
+        self.V = self.__get_ocv() - I_load * self.Z_internal
         self.__update_temp(I_load, dt, ambient)
+        self.__fluctuations()
 
     # Leave the battery cell unconnected to anything for some time dt - its idle
     # state. Here, it might lose some charge due to unforseen factors, but we
     # ignore it in the simulation.
     def idle(self, dt: float, ambient: Environment):
         self.__update_temp(0, dt, ambient)
+        self.__fluctuations()
 
 # Generate real BatteryCells given information from a datasheet of some
 # particular battery cell. In this case, the battery cell information is that of
@@ -65,15 +81,16 @@ def generate_real_cells(number: int, ambient: Environment) -> list[BatteryCell]:
         # use Gaussian distribution for manufacturing errors.
        v_nom = np.random.normal(3.2, 0.06) # 2% error
        cell = BatteryCell(
-           V_nominal=v_nom,
+           V_nominal_max=v_nom,
+           V_nominal_min=0.6*v_nom,                    # 60% of the max voltage
            Q_max=np.random.normal(1600, 80),           # 5% error
            Z_internal=np.random.normal(0.040, 0.002),  # 5% error
            efficiency=np.random.normal(0.95, 0.01),    # 1% error
            mass=np.random.normal(0.041, 0.001),        # 0.1% error
            thermal_cap=1130,                           # J/(kg·°C), constant
            V=v_nom,                                    # initial voltage ~ OCV
-           T=ambient.T + np.random.normal(0, 2),       # spread around ambient
-           soc=np.random.uniform(70, 95),              # start partially charged
+           T=ambient.T + np.random.normal(0, 0.02),    # spread around ambient
+           soc=np.random.randint(1, 99),               # start partially charged
        )
        cells.append(cell)
     return cells
@@ -212,11 +229,11 @@ class BMS:
 
 # Simulator variable initializations
 ambient = Environment(65.0, 19.0, 0.06)
-bms = BMS(1000, 1, "./ttyVBMS", 115200)
+bms = BMS(1000, 0.01, "./ttyVBMS", 115200)
 battery = BatteryPack(Connection(Topology(40, 4, 10), Topology(4, 1, 4)), 12, 4)
 cells = generate_real_cells(battery.cell_count(), ambient)
 rcd = RCD(10)                   # A, we charge the battery using this current
-R_load = 30000                  # Ohm, load resistance
+R_load = 300                    # Ohm, load resistance
 current_mode = 'idle'
 running = True
 
@@ -226,6 +243,8 @@ def generate_bms_msg(battery, cells, load, ambient):
     humidity, voltage low, voltage pack, current low, current pack, max temp,
     min temp, max bms temp, min bms temp, avg temp, max cell volt, min cell
     volt, state of charge. """
+
+    # Add some reading noise and/or fluctuations
     cell_voltages = [c.V for c in cells]
 
     # NOTE: because I don't know the exact placement of temperature sensors, I
@@ -242,15 +261,15 @@ def generate_bms_msg(battery, cells, load, ambient):
     total_series = battery.connection.pack.series * battery.connection.module.series
     voltage_pack = battery.pack_voltage(cells, R_load)
     pcb_temps = np.random.normal(ambient.T + 5.0, 0.5, battery.pcb_temps).tolist()
-    voltage_low = 12.1
-    current_low = 1.2
+    voltage_low = 12.1          # TODO: for now just constant
+    current_low = 1.2           # TODO: for now just constant
 
     # Compute pack current based on mode
     parallel_total = battery.connection.pack.parallel * battery.connection.module.parallel
     if current_mode == "charge":
         pack_current = rcd.current
     elif current_mode == "discharge":
-        pack_current = voltage_pack / load
+        pack_current = voltage_pack / R_load
     else:
         pack_current = 0.0
 
@@ -283,14 +302,12 @@ def generate_bms_msg(battery, cells, load, ambient):
         avg_soc
     )
 
-    return ",".join(f"{val:.2f}" for val in data_points) + ","
+    return ",".join(f"{val:.2f}" for val in data_points) + '\n'
 
-def simulation(bms, battery, cells, rcd, load, ambient):
-    """Generates fake BMS messages based on the [current_mode] and writes to
-    the appropriate device"""
-    global current_mode, running
+def simulation(bms, battery, cells, ambient):
+    """Generates fake BMS messages based on the [current_mode] and writes to the appropriate device"""
+    global current_mode, running, rcd, R_load
     
-    print("Simulation started.")
     for _ in np.arange(0, bms.lifetime, bms.period):
         if not running:         # simulation stopped
             break
@@ -299,45 +316,54 @@ def simulation(bms, battery, cells, rcd, load, ambient):
             if current_mode == "charge":
                 cell.charge(battery.cell_current(rcd.current), bms.period, ambient)
             elif current_mode == "discharge":
-                V_pack = battery.pack_voltage(cells, load)
-                I_pack = V_pack / load
+                V_pack = battery.pack_voltage(cells, R_load)
+                I_pack = V_pack / R_load
                 I_cell = battery.cell_current(I_pack)
                 cell.discharge(I_cell, bms.period, ambient)
             else:               # current_mode == "idle"
                 cell.idle(bms.period, ambient)
 
-        msg = generate_bms_msg(battery, cells, load, ambient)
+        msg = generate_bms_msg(battery, cells, R_load, ambient)
         bms.device.write(msg.encode('ascii'))
         sleep(bms.period)
-    print("Simulation finished.")
 
 def repl():
     """Run REPL mode for user to input the operation mode (idle, charge,
-    discharge, quit, connect). """
-    global current_mode, running
+    discharge, quit).j"""
+    global current_mode, running, rcd, R_load
+
+    is_tty = sys.stdin.isatty() # does this script run from a terminal?
     
-    print("Starting REPL: 'idle [default]', 'charge', 'discharge', 'quit', 'connect'")
+    if is_tty:
+        print("Starting REPL: (type help)")
     while True:
-        cmd = input("BMS> ").strip().lower()
-        if cmd == 'quit':
+        input_str = "BMS> " if is_tty else ""
+        cmd = input(input_str).strip().lower().split(" ")
+        if cmd[0] == 'quit':
             running = False
             break
-        elif cmd in ['idle', 'charge', 'discharge']:
-            current_mode = cmd
-            print(f"Mode changed to: {current_mode}")
-        else:                   # current_mode == 'connect'
-            pass                # TODO: handle this part
-    print("Finished REPL.")
+        elif cmd[0] in ['idle', 'charge', 'discharge']:
+            current_mode = cmd[0]
+            if cmd[0] == 'charge':
+                rcd.current = float(cmd[1])
+            elif cmd[0] == 'discharge':
+                R_load = float(cmd[1])
+        elif cmd == 'help':
+            if is_tty:
+                print("Not implemented :p")
+    if is_tty:
+        print("Finished REPL.")
+
 
 if __name__ == "__main__":
     thread = threading.Thread(
         target=simulation,
-        args=(bms, battery, cells, rcd, R_load, ambient),
+        args=(bms, battery, cells, ambient),
         daemon=True
     )
+
+    os.write(3, b"ready\0")
 
     # Start the simulation and the REPL
     thread.start()
     repl()
-
-    print("Exiting the simulator...")

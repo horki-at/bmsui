@@ -21,8 +21,10 @@ int main() try
   MonitoringWindow window("BMSUI - Battery Management System User Interface");
 
   // Enable wanted views of data
-  window.enable(MonitoringWindow::Module::DEMO);
+  window.enable(MonitoringWindow::Module::SYS_VOLT_GRAPH);
+  window.enable(MonitoringWindow::Module::SYS_CURR_GRAPH);
   window.enable(MonitoringWindow::Module::GENERAL_STATS);
+  window.enable(MonitoringWindow::Module::CONSOLE);
   window.enable(MonitoringWindow::Module::CELL_VIEW);
   window.enable(MonitoringWindow::Module::SOC);
 

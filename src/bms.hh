@@ -37,7 +37,7 @@ public:
     float maxCellVolt, minCellVolt;
   };
 
-  using Buffer = Ring<BMS::Data, 64>;
+  using Buffer = Ring<BMS::Data, 512>;
   
 private:
   std::ifstream d_in;           // input stream for the BMS device (eg via USB)
@@ -69,6 +69,7 @@ private:
   bool next();
 };
 
+#include <iostream>
 inline bool BMS::next()
 {
   d_in >> d_currentData;
