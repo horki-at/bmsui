@@ -1,5 +1,5 @@
 #include "simulator.hh"
-#include "scripts.hh"
+#include "paths.hh"
 
 #include <iostream> // TODO: @trace remove this
 #include <filesystem>

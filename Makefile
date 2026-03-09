@@ -49,6 +49,8 @@ SCRDIR := $(PREFIX)/share/bmsui
 LOCAL_SCRDIR := .
 CXXFLAGS := -DSCRDIR=$(LOCAL_SCRDIR)
 
+UV := "$(HOME)/.local/bin/uv"
+
 install: CXXFLAGS := $(filter-out -DSCRDIR=%,$(CXXFLAGS))
 install: CXXFLAGS += -DSCRDIR=$(SCRDIR)
 install: release
@@ -56,15 +58,17 @@ install: release
 | @install -d $(BINDIR)
 | @install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
 | @mkdir -p $(SCRDIR)
+| @cp -r ./assets/ $(SCRDIR)
 | @cp -r ./util/ $(SCRDIR)
-| @uv venv $(SCRDIR)/.venv/
-| @uv $(SCRDIR)/.venv/bin/python3 install -r requirements.txt
+| @$(UV) venv $(SCRDIR)/.venv/
+| @. $(SCRDIR)/.venv/bin/activate && $(UV) pip install -r requirements.txt
 | @echo "Finished."
 
 uninstall:
 | @echo "Uninstalling $(TARGET)..."
 | @rm $(BINDIR)/$(TARGET)
 | @rm -rf $(SCRDIR)
+| @echo "Finished."
 
 debug: CXXFLAGS += -ggdb -DDEBUG -O1
 debug: $(TARGET)

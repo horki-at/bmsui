@@ -1,5 +1,6 @@
 #include "monitoring_window.hh"
 #include "graph.hh"
+#include "paths.hh"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -119,7 +120,7 @@ void MonitoringWindow::setup_imgui_context() const
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   // Load the font
-  ImFont *font = io.Fonts->AddFontFromFileTTF("./assets/iosevka-regular.ttf", 28.0f);
+  ImFont *font = io.Fonts->AddFontFromFileTTF(FONT_PATH, 28.0f);
   ImGui::PushFont(font);
 
   // Disable TitleBgActive

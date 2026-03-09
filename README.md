@@ -15,15 +15,29 @@ some tweakering or WSL on windows.
 
 # Requirements
 
-On Linux/Debian use the following command to install all the prerequisites:
+On Linux/Debian (Wayland/X11) use the following command to install all the prerequisites:
 ```bash
-apt install libwayland-dev libxkbcommon-dev xorg-dev build-essential
+$ apt install libwayland-dev libxkbcommon-dev xorg-dev build-essential make libgl1-mesa-dev cmake libwayland-bin wayland-protocols libxrandr-dev libxinerama-dev socat python3 curl
+$ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 If you have NVIDIA graphics card and Linux, make sure you have working drivers.
-On Debian, refer to [Debian NVIDIA manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
+On Debian, refer to [Debian NVIDIA
+manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
 
 # Installation
+
+
+```bash
+$ cd path/to/your/preferred/directory
+$ git clone https://github.com/horki-at/bmsui.git
+$ cd bmsui
+$ ./configure.sh
+# To install system-wise:
+$ sudo -E make install -j16
+# To install user-wide:
+$ make install -j16
+```
 
 # Usage
 
