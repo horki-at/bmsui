@@ -15,6 +15,14 @@ some tweakering or WSL on windows.
 
 # Requirements
 
+On Linux/Debian use the following command to install all the prerequisites:
+```bash
+apt install libwayland-dev libxkbcommon-dev xorg-dev build-essential
+```
+
+If you have NVIDIA graphics card and Linux, make sure you have working drivers.
+On Debian, refer to [Debian NVIDIA manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
+
 # Installation
 
 # Usage

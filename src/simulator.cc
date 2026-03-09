@@ -1,5 +1,7 @@
 #include "simulator.hh"
+#include "scripts.hh"
 
+#include <iostream> // TODO: @trace remove this
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -22,12 +24,11 @@ void Simulator::start()
 
 void Simulator::start_comm()
 {
-  // TODO: @hardcode need some more robust script path
-  char *args[] = { (char *)"./util/start_comm.sh",
-                   (char *)"ttyVBMS",
-                   (char *)"ttyVAPP",
+  char *args[] = { START_COMM_SCRIPT,
+                   (char *)d_bmsDeviceFile.string().c_str(),
+                   (char *)d_appDeviceFile.string().c_str(),
                    NULL };
-  execvp("./util/start_comm.sh", args);
+  execvp(START_COMM_SCRIPT, args);
   _exit(1);
 }
 
@@ -41,10 +42,9 @@ void Simulator::populate_data()
   dup2(d_rdyPipe.writeend(), 3); // NOTE: fd 3 must be used in populate data
   d_rdyPipe.close_write();
   
-  // TODO: @hardcode need some more robust script path
-  char *args[] = { (char *)"./.venv/bin/python3",
-                   (char *)"./util/populate_bms.py", NULL };
-  execvp("./.venv/bin/python3", args);
+  char *args[] = { PYTHON3_BIN,
+                   POPULATE_BMS_SCRIPT, NULL };
+  execvp(PYTHON3_BIN, args);
   _exit(3);
 }
 

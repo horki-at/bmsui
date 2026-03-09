@@ -1,9 +1,10 @@
 .RECIPEPREFIX=|
 
-.PHONY: build clean
+.PHONY: build clean debug release install
 
 CC  := gcc
 CXX := g++ -std=c++26 -Wall -pedantic
+CXXFLAGS :=
 
 # Vendor: glad 
 GLAD_TARGET  := vendor/glad/src/glad.o
@@ -37,18 +38,46 @@ LDFLAGS := -lGL $(GLFW_LIBRARY)
 
 vpath %.cc $(dir $(SOURCES))
 
-build: $(TARGET)
+build: debug
 
 clean:
 | rm $(OBJECTS) $(DEPS) $(TARGET) $(GLAD_TARGET) 
 | rm -rf vendor/glfw/build/
 
+BINDIR := $(PREFIX)/bin
+SCRDIR := $(PREFIX)/share/bmsui
+LOCAL_SCRDIR := .
+CXXFLAGS := -DSCRDIR=$(LOCAL_SCRDIR)
+
+install: CXXFLAGS := $(filter-out -DSCRDIR=%,$(CXXFLAGS))
+install: CXXFLAGS += -DSCRDIR=$(SCRDIR)
+install: release
+| @echo "Installing $(TARGET)... into $(BINDIR), and scripts into $(SCRDIR)"
+| @install -d $(BINDIR)
+| @install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
+| @mkdir -p $(SCRDIR)
+| @cp -r ./util/ $(SCRDIR)
+| @uv venv $(SCRDIR)/.venv/
+| @uv $(SCRDIR)/.venv/bin/python3 install -r requirements.txt
+| @echo "Finished."
+
+uninstall:
+| @echo "Uninstalling $(TARGET)..."
+| @rm $(BINDIR)/$(TARGET)
+| @rm -rf $(SCRDIR)
+
+debug: CXXFLAGS += -ggdb -DDEBUG -O1
+debug: $(TARGET)
+
+release: CXXFLAGS += -O3
+release: $(TARGET)
+
 $(TARGET): $(OBJECTS) $(GLAD_TARGET) | $(GLFW_TARGET)
 | $(CXX) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cc
-| $(CXX) $(INCLUDE) -MMD -MP -MF $(@:=.dep) -c -o $@ $<
+| $(CXX) $(CXXFLAGS) $(INCLUDE) -MMD -MP -MF $(@:=.dep) -c -o $@ $<
 %.o: %.cpp
-| $(CXX) $(INCLUDE) -MMD -MP -MF $(@:=.dep) -c -o $@ $<
+| $(CXX) $(CXXFLAGS) $(INCLUDE) -MMD -MP -MF $(@:=.dep) -c -o $@ $<
 
 -include $(DEPS)
