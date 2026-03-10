@@ -259,17 +259,19 @@ def generate_bms_msg(battery, cells, load, ambient):
     total_series = battery.connection.pack.series * battery.connection.module.series
     voltage_pack = battery.pack_voltage(cells, R_load)
     pcb_temps = np.random.normal(ambient.T + 5.0, 0.5, battery.pcb_temps).tolist()
-    voltage_low = 12.1          # TODO: for now just constant
-    current_low = 1.2           # TODO: for now just constant
+    voltage_low = 12.1 + np.random.normal(0, 0.04)
 
     # Compute pack current based on mode
     parallel_total = battery.connection.pack.parallel * battery.connection.module.parallel
     if current_mode == "charge":
         pack_current = rcd.current
+        current_low = 0.0
     elif current_mode == "discharge":
         pack_current = voltage_pack / R_load
+        current_low = 1.2 + np.random.normal(0, 0.03)
     else:
         pack_current = 0.0
+        current_low = 0.0
 
     max_cell_v = np.max(cell_voltages)
     min_cell_v = np.min(cell_voltages)

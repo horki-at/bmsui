@@ -6,7 +6,7 @@ else
 	PREFIX ?= $(HOME)/.local
 endif
 
-.PHONY: build clean debug release install copy-files
+.PHONY: build clean debug release install copy-files local-venv uninstall
 
 CC  := gcc
 CXX := g++ -std=c++26 -Wall -pedantic
@@ -80,11 +80,15 @@ uninstall:
 | @rm -rf $(SCRDIR)
 | @echo "Finished."
 
+local-venv:
+| $(UV) venv .venv/
+| $(UV) pip install --python .venv/bin/python3 -r requirements.txt
+
 debug: CXXFLAGS += -ggdb -DDEBUG -O1
-debug: $(TARGET)
+debug: $(TARGET) local-venv
 
 release: CXXFLAGS += -O3
-release: $(TARGET)
+release: $(TARGET) local-venv
 
 $(TARGET): $(OBJECTS) $(GLAD_TARGET) | $(GLFW_TARGET)
 | $(CXX) -o $@ $^ $(LDFLAGS)

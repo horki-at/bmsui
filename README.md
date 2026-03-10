@@ -27,6 +27,7 @@ manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
 
 # Installation
 
+To install use the following commands:
 
 ```bash
 $ cd path/to/your/preferred/directory
@@ -37,32 +38,75 @@ $ ./configure.sh
 $ sudo -E make install -j16
 # To install user-wide:
 $ make install -j16
+# To install system-wide:
+$ sudo -E make install -j16
 ```
 
 # Usage
 
+## Welcome screen
+
+After starting the app, you will be welcome with the inactive program:
+<img src="docs/empty.png" width=350>
+
+There are a couple of modules, each with its own information. If you don't like
+the layout, you can re-arrange the panels and the new layout will be preserved
+in the future uses. Modules functionalities are:
+
+1. **General Statistics** presents min/max/average values of temperatures,
+   voltages, and currents on the cell and pack levels. It also presents average
+   BMS temperature measured by the four sensors.
+2. **Console** is a way for a program to communicate with the user. It logs
+   errors, warnings (currently, this is a todo item), and other program-level
+   information. It can be disabled by hiding the console.
+3. **Charge percentage** represents the state of charge of the battery pack.
+4. **Graphs** present the time-domain of high/low voltage and current. By
+   right-clicking on each graph, you can change their views, display ticks and
+   marks. etc.
+5. **Cell view** is a grid of modules and corresponding cells of the entire
+   battery pack. Hovering on a cell gives you information about that cell's
+   individual temperature and voltage. Note that because there are only 48
+   temperature sensors, close-by cells happen to have the same temperature
+   (because only one sensor measures multiple cells). If cell's temperature
+   becomes greater that its operating temperature, the cell color becomes
+   redder.
+   
+## Connecting the device
+
+At the moment of development, I didn't have access to the real battery therefore
+the program cannot yet auto-detect the BMS device. Hence
+Device/Open_real\_device does't work yet. Instead a simple simulation of a real
+battery can be launched in the Device menu. After clicking there, you will be
+presented with another Simulation module where you can either disconnect the
+battery from everything (idle mode), charge it with the set current, or
+discharge it at a certain load resistance.
+<img src="docs/sim.png" width=350>
+
+Note that the simulation is set to work at 100Hz (100 data-samples per second).
+
 # Further TODOs
 
-This is a list of things that bmsui might benefit from, or those that I haven't
-achieved due to the time constraints.
-
-- [ ] A better simulation model for the battery pack.
-- [ ] A database collection of some battery cells and battery pack configurations.
-- [ ] Ability to store/load the records in/from a local database for future investigation.
-- [ ] Ability to dynamically change font size (e.g., with the mouse wheel).
-- [ ] Ability to understand when the charging occurs, and with which current.
-
-Expected issues
-- [ ] Not entirely accurate model of BMS data (e.g., there is high dependence on
-      the load resistance and there might be python bugs that I didn't catch,
-      neighbour cell's temperature don't affect the other cells)
-- [ ] Changing the order/contents of data received from BMS requires
-      modifications in the entire project. I made it simpler due to time
-      constraints.
+Because this is an early version 1, it still doesn't have everything that I
+would want because of the time constraints. Here I list some the things that the
+program might benefit from:
+- [ ] A better simulation model for the battery pack (e.g., not a first-degree
+      order model, better cell-to-cell temperature interaction)
+- [ ] Module to fully customize the simulation from within the
+      application. (e.g., customize the actual battery pack module/cell
+      configuration, or set ambient information by hand)
+- [ ] Ability to store/load the records from a local database for future
+      re-examination or presentation (might be sqlite or some custom binary
+      file)
+- [ ] Ability to specify the order of UART data received from BMS. Right now it
+      is hardcoded into one of the extractor operators in BMS.
+- [ ] Make this program cross platform (Windows), and list prerequisites-install
+      commands for other linux distributions.
+- [ ] (less important) Display the 3D model of the battery pack for visual
+      aesthetics.
 
 # References
 
 - The Art of Electronics by Horowitz et al.
 - Aaron Danner youtube channel for electronics
-- Sherman-Morrison formula
-- Millman's theorem
+- Wikipedia Sherman-Morrison formula
+- Wikipedia Millman's theorem
