@@ -55,7 +55,7 @@ $ sudo -E make install -j16
 
 After starting the app, you will be welcome with the inactive program:
 
-<img src="docs/empty.png" width=350>
+<img src="assets/empty.png" width=350>
 
 There are a couple of modules, each with its own information. If you don't like
 the layout, you can re-arrange the panels and the new layout will be preserved
@@ -89,7 +89,7 @@ presented with another Simulation module where you can either disconnect the
 battery from everything (idle mode), charge it with the set current, or
 discharge it at a certain load resistance.
 
-<img src="docs/sim.png" width=350>
+<img src="assets/sim.png" width=350>
 
 Note that the simulation is set to work at 100Hz (100 data-samples per second).
 
