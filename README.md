@@ -1,5 +1,9 @@
 # BMSUI
 
+<p align="center"><img src="./assets/icon.jpeg" alt="Bmsui icon" width="200"/></p>
+
+## Introduction
+
 Battery management system UI. This program reads input from the BMS via an
 USB-adaptor and displays the data on a graphical user interface. This project is
 my attempt at assignment for the Software Programmer position at
@@ -13,7 +17,7 @@ Note that at the moment of making this assignment, it is tested on linux
 only. Besides tools and requirements are available on linux, but might require
 some tweakering or WSL on windows.
 
-# Requirements
+## Requirements
 
 On Linux/Debian (Wayland/X11) use the following command to install all the prerequisites:
 ```bash
@@ -25,7 +29,7 @@ If you have NVIDIA graphics card and Linux, make sure you have working drivers.
 On Debian, refer to [Debian NVIDIA
 manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
 
-# Installation
+## Installation
 
 To install use the following commands:
 
@@ -42,9 +46,9 @@ $ make install -j16
 $ sudo -E make install -j16
 ```
 
-# Usage
+## Usage
 
-## Welcome screen
+### Welcome screen
 
 After starting the app, you will be welcome with the inactive program:
 
@@ -72,7 +76,7 @@ in the future uses. Modules functionalities are:
    becomes greater that its operating temperature, the cell color becomes
    redder.
    
-## Connecting the device
+### Connecting the device
 
 At the moment of development, I didn't have access to the real battery therefore
 the program cannot yet auto-detect the BMS device. Hence
@@ -86,7 +90,7 @@ discharge it at a certain load resistance.
 
 Note that the simulation is set to work at 100Hz (100 data-samples per second).
 
-# Further TODOs
+## Further TODOs
 
 Because this is an early version 1, it still doesn't have everything that I
 would want because of the time constraints. Here I list some the things that the
@@ -106,7 +110,7 @@ program might benefit from:
 - [ ] (less important) Display the 3D model of the battery pack for visual
       aesthetics.
 
-# References
+## References
 
 - The Art of Electronics by Horowitz et al.
 - Aaron Danner youtube channel for electronics
