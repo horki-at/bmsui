@@ -24,7 +24,9 @@ and compiling. If you wish to use this program, you should install WSL Ubuntu.
 
 On Linux/Debian (Wayland/X11) use the following command to install all the prerequisites:
 ```bash
-$ apt install libwayland1-dev libxkbcommon-dev xorg-dev build-essential make libgl1-mesa-dev cmake libwayland-bin wayland-protocols libxrandr-dev libxinerama-dev socat python3 curl sed
+$ apt install libwayland1-dev libxkbcommon-dev xorg-dev build-essential make
+              libgl1-mesa-dev cmake libwayland-bin wayland-protocols 
+               libxrandr-dev libxinerama-dev socat python3 curl sed
 $ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
@@ -145,7 +147,7 @@ The simulation models each cell with:
 
 - Open-circuit voltage is a linear function of its state of charge:
 
-$$ V_\text{OCV} = lerp(V_\text{nominal max}, V_\text{nominal min}, SoC)$$
+$$V_\text{OCV} = lerp(V_\text{nominal max}, V_\text{nominal min}, SoC)$$
 
 where *lerp* is the standard linear interpolation function.
 - Internal real resistance (no reactance), which is set to be constant.
