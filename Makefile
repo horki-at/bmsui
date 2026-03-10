@@ -67,7 +67,7 @@ copy-files:
 | @cp -r ./assets/ $(SCRDIR)
 | @cp -r ./util/ $(SCRDIR)
 | @$(UV) venv $(SCRDIR)/.venv/
-| @. $(SCRDIR)/.venv/bin/activate && $(UV) pip install -r requirements.txt
+| @$(UV) pip install --python $(SCRDIR)/.venv/bin/python3 -r requirements.txt
 | @mkdir -p $(HOME)/.local/share/applications
 | @cp ./assets/bmsui_template.desktop $(HOME)/.local/share/applications/bmsui.desktop
 | @sed -i 's@PATH_TO_EXEC@$(BINDIR)/bmsui@' $(HOME)/.local/share/applications/bmsui.desktop
@@ -88,8 +88,8 @@ uninstall:
 | @echo "Finished."
 
 local-venv:
-| $(UV) venv .venv/
-| $(UV) pip install --python .venv/bin/python3 -r requirements.txt
+| $(UV) venv ./.venv/
+| $(UV) pip install --python ./.venv/bin/python3 -r requirements.txt
 
 debug: CXXFLAGS += -ggdb -DDEBUG -O1
 debug: $(TARGET) local-venv
