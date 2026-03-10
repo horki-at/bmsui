@@ -147,7 +147,7 @@ The simulation models each cell with:
 
 - Open-circuit voltage is a linear function of its state of charge:
 
-$$ V_{\text{OCV}} = lerp(V_{\text{nominal\_max}}, V_{\text{nominal\_min}}, SoC)$$
+$$ V_\text{OCV} = lerp(V_\text{nominal max}, V_\text{nominal min}, SoC)$$
 
 where *lerp* is the standard linear interpolation function.
 - Internal real resistance (no reactance), which is set to be constant.
