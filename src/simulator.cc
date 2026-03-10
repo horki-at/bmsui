@@ -1,7 +1,6 @@
 #include "simulator.hh"
 #include "paths.hh"
 
-#include <iostream> // TODO: @trace remove this
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -43,7 +42,9 @@ void Simulator::populate_data()
   d_rdyPipe.close_write();
   
   char *args[] = { PYTHON3_BIN,
-                   POPULATE_BMS_SCRIPT, NULL };
+                   POPULATE_BMS_SCRIPT,
+                   (char *)d_bmsDeviceFile.string().c_str(),
+                   NULL };
   execvp(PYTHON3_BIN, args);
   _exit(3);
 }

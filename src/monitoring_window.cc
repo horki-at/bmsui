@@ -115,9 +115,11 @@ void MonitoringWindow::setup_imgui_context() const
   ImGui::CreateContext();
   ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
+
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; 
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  io.IniFilename = IMGUI_INI;
 
   // Load the font
   ImFont *font = io.Fonts->AddFontFromFileTTF(FONT_PATH, 28.0f);

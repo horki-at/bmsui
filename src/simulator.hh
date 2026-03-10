@@ -2,6 +2,7 @@
 #define INCLUDED_SIMULATOR_
 
 #include "utils.hh"
+#include "paths.hh"
 #include "pipe.hh"
 #include "double_fork.hh"
 
@@ -28,8 +29,8 @@ class Simulator
   std::filesystem::path d_appDeviceFile; // BMS sends data to this APP device.
 
 public:
-  Simulator(std::filesystem::path bmsDeviceFile = "./ttyVBMS",
-            std::filesystem::path appDeviceFile = "./ttyVAPP");
+  Simulator(std::filesystem::path bmsDeviceFile = TTYVBMS,
+            std::filesystem::path appDeviceFile = TTYVAPP);
   DISABLE_CPY_MV(Simulator);
   ~Simulator();
 

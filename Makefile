@@ -1,6 +1,12 @@
 .RECIPEPREFIX=|
 
-.PHONY: build clean debug release install
+ifeq ($(shell test -w /usr/local/bin && echo yes),yes)
+	PREFIX ?= /usr/local
+else
+	PREFIX ?= $(HOME)/.local
+endif
+
+.PHONY: build clean debug release install copy-files
 
 CC  := gcc
 CXX := g++ -std=c++26 -Wall -pedantic
@@ -43,25 +49,29 @@ build: debug
 clean:
 | rm $(OBJECTS) $(DEPS) $(TARGET) $(GLAD_TARGET) 
 | rm -rf vendor/glfw/build/
+| rm -rf .venv/
 
 BINDIR := $(PREFIX)/bin
 SCRDIR := $(PREFIX)/share/bmsui
+TMPDIR := /tmp
 LOCAL_SCRDIR := .
-CXXFLAGS := -DSCRDIR=$(LOCAL_SCRDIR)
+CXXFLAGS := -DSCRDIR=$(LOCAL_SCRDIR) -DTMPDIR=$(TMPDIR)
 
 UV := "$(HOME)/.local/bin/uv"
 
-install: CXXFLAGS := $(filter-out -DSCRDIR=%,$(CXXFLAGS))
-install: CXXFLAGS += -DSCRDIR=$(SCRDIR)
-install: release
-| @echo "Installing $(TARGET)... into $(BINDIR), and scripts into $(SCRDIR)"
-| @install -d $(BINDIR)
-| @install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
+copy-files:
 | @mkdir -p $(SCRDIR)
 | @cp -r ./assets/ $(SCRDIR)
 | @cp -r ./util/ $(SCRDIR)
 | @$(UV) venv $(SCRDIR)/.venv/
 | @. $(SCRDIR)/.venv/bin/activate && $(UV) pip install -r requirements.txt
+
+install: CXXFLAGS := $(filter-out -DSCRDIR=%,$(CXXFLAGS))
+install: CXXFLAGS += -DSCRDIR=$(SCRDIR)
+install: copy-files release
+| @echo "Installing $(TARGET)... into $(BINDIR), and scripts into $(SCRDIR)"
+| @install -d $(BINDIR)
+| @install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
 | @echo "Finished."
 
 uninstall:

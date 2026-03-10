@@ -1,5 +1,3 @@
-#!/bin/env ./.venv/bin/python3
-
 # This utility generates fake BMS data for a battery pack with configurable
 # period, lifetime, baud_rate, cell count, module count, type of connections,
 # and battery cell specification.
@@ -229,7 +227,7 @@ class BMS:
 
 # Simulator variable initializations
 ambient = Environment(65.0, 19.0, 0.06)
-bms = BMS(1000, 0.01, "./ttyVBMS", 115200)
+bms = BMS(1000, 0.01, sys.argv[1], 115200)
 battery = BatteryPack(Connection(Topology(40, 4, 10), Topology(4, 1, 4)), 12, 4)
 cells = generate_real_cells(battery.cell_count(), ambient)
 rcd = RCD(10)                   # A, we charge the battery using this current
