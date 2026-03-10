@@ -12,6 +12,9 @@ CC  := gcc
 CXX := g++ -std=c++26 -Wall -pedantic
 CXXFLAGS :=
 
+# Vendor: stb_image
+STB_INCLUDE := -Ivendor/stb_image/
+
 # Vendor: glad 
 GLAD_TARGET  := vendor/glad/src/glad.o
 GLAD_INCLUDE := -Ivendor/glad/include/
@@ -39,7 +42,7 @@ SOURCES := $(wildcard src/*.cc vendor/imgui/*.cpp vendor/implot/*.cpp)    \
            vendor/imgui/backends/imgui_impl_opengl3.cpp
 OBJECTS := $(patsubst %.cc,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
 DEPS := $(OBJECTS:.o=.o.dep)
-INCLUDE := -Isrc/ -Ivendor/imgui/ -Ivendor/implot/ -Ivendor/imgui/backends/ $(GLAD_INCLUDE) $(GLFW_INCLUDE) 
+INCLUDE := -Isrc/ -Ivendor/imgui/ -Ivendor/implot/ -Ivendor/imgui/backends/ $(GLAD_INCLUDE) $(GLFW_INCLUDE) $(STB_INCLUDE)
 LDFLAGS := -lGL $(GLFW_LIBRARY)
 
 vpath %.cc $(dir $(SOURCES))
@@ -47,7 +50,7 @@ vpath %.cc $(dir $(SOURCES))
 build: debug
 
 clean:
-| rm $(OBJECTS) $(DEPS) $(TARGET) $(GLAD_TARGET) 
+| rm $(OBJECTS) $(DEPS) $(TARGET) $(GLAD_TARGET)
 | rm -rf vendor/glfw/build/
 | rm -rf .venv/
 
@@ -65,6 +68,10 @@ copy-files:
 | @cp -r ./util/ $(SCRDIR)
 | @$(UV) venv $(SCRDIR)/.venv/
 | @. $(SCRDIR)/.venv/bin/activate && $(UV) pip install -r requirements.txt
+| @mkdir -p $(HOME)/.local/share/applications
+| @cp ./assets/bmsui_template.desktop $(HOME)/.local/share/applications/bmsui.desktop
+| @sed -i 's@PATH_TO_EXEC@$(BINDIR)/bmsui@' $(HOME)/.local/share/applications/bmsui.desktop
+| @sed -i 's@PATH_TO_ICON@$(SCRDIR)/assets/icon.jpeg@' $(HOME)/.local/share/applications/bmsui.desktop
 
 install: CXXFLAGS := $(filter-out -DSCRDIR=%,$(CXXFLAGS))
 install: CXXFLAGS += -DSCRDIR=$(SCRDIR)

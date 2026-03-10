@@ -2,6 +2,6 @@
 Type=Application
 Name=BMSUI
 Description=Battery management system monitor
-Exec=
-Icon=
+Exec=PATH_TO_EXEC
+Icon=PATH_TO_ICON
 Categories=Development

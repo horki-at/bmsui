@@ -17,7 +17,7 @@ some tweakering or WSL on windows.
 
 On Linux/Debian (Wayland/X11) use the following command to install all the prerequisites:
 ```bash
-$ apt install libwayland-dev libxkbcommon-dev xorg-dev build-essential make libgl1-mesa-dev cmake libwayland-bin wayland-protocols libxrandr-dev libxinerama-dev socat python3 curl
+$ apt install libwayland-dev libxkbcommon-dev xorg-dev build-essential make libgl1-mesa-dev cmake libwayland-bin wayland-protocols libxrandr-dev libxinerama-dev socat python3 curl sed
 $ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
@@ -47,6 +47,7 @@ $ sudo -E make install -j16
 ## Welcome screen
 
 After starting the app, you will be welcome with the inactive program:
+
 <img src="docs/empty.png" width=350>
 
 There are a couple of modules, each with its own information. If you don't like
@@ -80,6 +81,7 @@ battery can be launched in the Device menu. After clicking there, you will be
 presented with another Simulation module where you can either disconnect the
 battery from everything (idle mode), charge it with the set current, or
 discharge it at a certain load resistance.
+
 <img src="docs/sim.png" width=350>
 
 Note that the simulation is set to work at 100Hz (100 data-samples per second).

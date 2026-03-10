@@ -10,6 +10,8 @@
 #include "GLFW/glfw3.h"
 #include "implot.h"
 
+#include "stb_image.h"
+
 #include <format>
 #include <optional>
 #include <iostream>
@@ -82,6 +84,12 @@ MonitoringWindow::MonitoringWindow(std::string title,
 
   setup_glfw_context();
   setup_imgui_context();
+
+  // set up the icon for GLFW window
+  GLFWimage images[1];
+  images[0].pixels = stbi_load(ICON_PATH, &images[0].width, &images[1].height, 0, 4);
+  glfwSetWindowIcon(d_window, 1, images);
+  stbi_image_free(images[0].pixels);
 
   // set appropriate callbacks
   glfwSetKeyCallback(d_window, key_callback);
