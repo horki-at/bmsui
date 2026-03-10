@@ -45,8 +45,6 @@ $ ./configure.sh
 $ sudo -E make install -j16
 # To install user-wide:
 $ make install -j16
-# To install system-wide:
-$ sudo -E make install -j16
 ```
 
 ## Usage
