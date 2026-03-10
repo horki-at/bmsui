@@ -155,6 +155,7 @@ where *lerp* is the standard linear interpolation function.
   and material-dependent heat capacity:
 
   $$dT = \frac{P_{\text{Joule}} - K(T - T_{\text{ambient}})}{Cm}dt$$
+
 - Open-circuit voltage includes Gaussian noise, coming from a variety of factors
   (such as thermal oscillations or external fields, etc.) that are difficult to
   model.
