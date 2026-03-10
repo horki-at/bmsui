@@ -154,7 +154,7 @@ where *lerp* is the standard linear interpolation function.
 - Generated Joule heat and ambient cooling both affect the cell, having the mass
   and material-dependent heat capacity:
 
-  $$dT = \frac{(P_{\text{Joule} - K(T - T_{\text{ambient}})}) * dt}{Cm}$$
+  $$dT = \frac{P_{\text{Joule}} - K(T - T_{\text{ambient}})}}{Cm}dt$$
 - Open-circuit voltage includes Gaussian noise, coming from a variety of factors
   (such as thermal oscillations or external fields, etc.) that are difficult to
   model.
