@@ -9,7 +9,7 @@ endif
 .PHONY: build clean debug release install copy-files local-venv uninstall
 
 CC  := gcc
-CXX := g++ -std=c++26 -Wall -pedantic
+CXX := g++ -std=c++23 -Wall -pedantic
 CXXFLAGS :=
 
 # Vendor: stb_image
@@ -85,6 +85,7 @@ uninstall:
 | @echo "Uninstalling $(TARGET)..."
 | @rm $(BINDIR)/$(TARGET)
 | @rm -rf $(SCRDIR)
+| @rm $(HOME)/.local/share/applications/bmsui.desktop
 | @echo "Finished."
 
 local-venv:
