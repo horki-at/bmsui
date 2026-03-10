@@ -94,7 +94,7 @@ discharge it at a certain load resistance.
 Note that the simulation is set to work at 100Hz (100 data-samples per second).
 
 ## Architecture
-TODO: doxygen comments and UML class diagram generation
+<img src="assets/uml.png" width=500 style="position: center;">
 
 ### Short component-wise description
 
@@ -146,12 +146,15 @@ actualy instructions of the module are written.
 The simulation models each cell with:
 
 - Open-circuit voltage is a linear function of its state of charge:
-$$ V_{\text{OCV}} =  $lerp(V_{\text{nominal\_max}}, V_{\text{nominal\_min}}, SoC)$
+
+$$ V_{\text{OCV}} =  $lerp(V_{\text{nominal\_max}}, V_{\text{nominal\_min}}, SoC)$$
+
 where *lerp* is the standard linear interpolation function.
 - Internal real resistance (no reactance), which is set to be constant.
 - Generated Joule heat and ambient cooling both affect the cell, having the mass
   and material-dependent heat capacity:
-  $dT = \frac{(P_{\text{Joule} - K(T - T_{\text{ambient}})}) * dt}{Cm}$
+
+  $$dT = \frac{(P_{\text{Joule} - K(T - T_{\text{ambient}})}) * dt}{Cm}$$
 - Open-circuit voltage includes Gaussian noise, coming from a variety of factors
   (such as thermal oscillations or external fields, etc.) that are difficult to
   model.
