@@ -132,9 +132,8 @@ pack configuration.
 *Graph* is a helper class that implements a shifting std::array of x- and
 y-coordinates. Its only use is by ImPlot to create the graphs.
 
-*MonitoringWindow* is a singleton (TODO: at the moment, it is not implemented
-exactly as a singleton) that manages the Simulator and BMS, and displays all the
-data on the monitor in a modular way. Its modules are listed in
+*MonitoringWindow* is a singleton that manages the Simulator and BMS, and
+displays all the data on the monitor in a modular way. Its modules are listed in
 MonitoringWindow::Module, and adding a new module is done by
 DECLARE\_RENDER_MODULE(module\_name) in the class definition, adding a new enum
 class entry into MonitoringWindow::Module, a new static function pointer into
