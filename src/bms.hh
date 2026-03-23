@@ -69,7 +69,6 @@ private:
   bool next();
 };
 
-#include <iostream>
 inline bool BMS::next()
 {
   d_in >> d_currentData;

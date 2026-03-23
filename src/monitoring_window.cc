@@ -9,7 +9,6 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "implot.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -34,8 +33,8 @@ static void clear_graphs()
   s_low_current.clear();
 }
 
-//static
-void (*const MonitoringWindow::s_modules[])(BMS::Data const &) = {
+// static
+void (*const MonitoringWindow::s_modules[])(BMS::Data const &data) = {
   &MonitoringWindow::render_demo_module,
   &MonitoringWindow::render_cell_view_module,
   &MonitoringWindow::render_general_stats_module,
@@ -47,65 +46,68 @@ void (*const MonitoringWindow::s_modules[])(BMS::Data const &) = {
 };
 
 //static
-ImGuiWindowFlags MonitoringWindow::s_windowFlags = ImGuiWindowFlags_NoCollapse;
-bool MonitoringWindow::s_openRealDeviceFlag = false;
-bool MonitoringWindow::s_simulateVirtualDeviceFlag = false;
-bool MonitoringWindow::s_closeSimulationFlag = false;
-bool MonitoringWindow::s_clearConsoleFlag = false;
-vector<string> MonitoringWindow::s_consoleBuffer{};
-Simulator MonitoringWindow::s_simulator{};
-
-//static
-void MonitoringWindow::init()
+void MonitoringWindow::init(std::string title, size_t width, size_t height)
 {
-	if (not glfwInit()) throw "Couldn't initialize glfw3."s;
+  // Initialize GLFW
+  if (not glfwInit()) throw "Couldn't initialize glfw3."s;
 
   // OpenGL Core Version 4.0
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-}
 
-//explicit
-MonitoringWindow::MonitoringWindow(std::string title,
-                                   size_t width, size_t height)
-:
-  d_width(width),
-  d_height(height),
-  d_window(glfwCreateWindow(width, height, title.c_str(), NULL, NULL)),
-  d_bms(),
-  d_enabledModules(0),
-  d_datacpy()
-{
-  if (not d_window)
+  // Initialize the single instance of MonitoringWindow
+  if (s_initialized)
+    throw runtime_error("MonitoringWindow already initialized.");
+
+  s_initialized = true;
+  MonitoringWindow &window = instance();
+
+  // Setup the GLFW window
+  window.d_width = width;
+  window.d_height = height;
+  if (window.d_window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
+      not window.d_window)
   {
     glfwTerminate();
-    throw "Couldn't create a glfw3 window."s;
+    throw runtime_error("Couldn't create a GLFW3 window.");
   }
 
-  setup_glfw_context();
-  setup_imgui_context();
+  // Setup ImGui and GLFW contexts
+  window.setup_glfw_context();
+  window.setup_imgui_context();
 
-  // set up the icon for GLFW window
+  // Setup the icon for the window
   GLFWimage images[1];
   images[0].pixels = stbi_load(ICON_PATH, &images[0].width, &images[0].height, 0, 4);
-  glfwSetWindowIcon(d_window, 1, images);
+  glfwSetWindowIcon(window.d_window, 1, images);
   stbi_image_free(images[0].pixels);
 
-  // set appropriate callbacks
-  glfwSetKeyCallback(d_window, key_callback);
+  // Set appropriate callbacks
+  glfwSetKeyCallback(window.d_window, key_callback);
+}
+
+//static
+MonitoringWindow &MonitoringWindow::instance()
+{
+  static MonitoringWindow inst;
+
+  if (not s_initialized)
+    throw runtime_error("MonitoringWindow was not initialized.");
+
+  return inst;
 }
 
 MonitoringWindow::~MonitoringWindow()
 {
-  if (s_simulator.running()) s_simulator.kill();
+  if (d_simulator.running()) d_simulator.kill();
   
   ImGui::PopStyleColor();
-  
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
   ImPlot::DestroyContext();
+
   glfwDestroyWindow(d_window);
   glfwTerminate();
 }
@@ -145,7 +147,7 @@ void MonitoringWindow::setup_imgui_context() const
 void MonitoringWindow::openRealDevice()
 {
   consoleWrite("[ERROR]: openRealDevice is not implemented.");
-  s_openRealDeviceFlag = false; // reset the flag
+  d_openRealDeviceFlag = false; // reset the flag
 }
 
 // TODO: @platform-dependent this function is platform dependent. For now, it
@@ -154,10 +156,10 @@ void MonitoringWindow::openRealDevice()
 void MonitoringWindow::simulateVirtualDevice() try
 {
   clear_graphs();
-  s_simulator.start();
+  d_simulator.start();
 
-  if (not d_bms.open_device(s_simulator.app()))
-    consoleWrite("[ERROR]: couldn't open "s + s_simulator.app());
+  if (not d_bms.open_device(d_simulator.app()))
+    consoleWrite("[ERROR]: couldn't open "s + d_simulator.app());
 
   // start the module
   enable(Module::SIMULATOR);
@@ -171,7 +173,7 @@ void MonitoringWindow::closeSimulation() try
 {
   clear_graphs();
   d_datacpy = {};
-  s_simulator.kill();
+  d_simulator.kill();
   disable(Module::SIMULATOR);
 }
 catch (exception const &exc)
@@ -186,14 +188,14 @@ void MonitoringWindow::menu()
   {
     if (ImGui::BeginMenu("Device"))
     {
-      ImGui::MenuItem("Open real device", NULL, &s_openRealDeviceFlag);
-      ImGui::MenuItem("Simulate virtual device", NULL, &s_simulateVirtualDeviceFlag);
-      ImGui::MenuItem("Close simulation", NULL, &s_closeSimulationFlag);
+      ImGui::MenuItem("Open real device", NULL, &d_openRealDeviceFlag);
+      ImGui::MenuItem("Simulate virtual device", NULL, &d_simulateVirtualDeviceFlag);
+      ImGui::MenuItem("Close simulation", NULL, &d_closeSimulationFlag);
       ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Extra"))
     {
-      ImGui::MenuItem("Clear console", "C", &s_clearConsoleFlag);
+      ImGui::MenuItem("Clear console", "C", &d_clearConsoleFlag);
       ImGui::EndMenu();
     }
     
@@ -201,25 +203,25 @@ void MonitoringWindow::menu()
   }
 
   // Process menu flags
-  if (s_clearConsoleFlag)
+  if (d_clearConsoleFlag)
   {
     clearConsoleBuffer();
-    s_clearConsoleFlag = false;
+    d_clearConsoleFlag = false;
   }
-  if (s_openRealDeviceFlag)
+  if (d_openRealDeviceFlag)
   {
     openRealDevice();
-    s_openRealDeviceFlag = false;
+    d_openRealDeviceFlag = false;
   }
-  if (s_simulateVirtualDeviceFlag)
+  if (d_simulateVirtualDeviceFlag)
   {
     simulateVirtualDevice();
-    s_simulateVirtualDeviceFlag = false;
+    d_simulateVirtualDeviceFlag = false;
   }
-  if (s_closeSimulationFlag)
+  if (d_closeSimulationFlag)
   {
     closeSimulation();
-    s_closeSimulationFlag = false;
+    d_closeSimulationFlag = false;
   }
 }
 
@@ -273,7 +275,7 @@ void MonitoringWindow::key_callback(GLFWwindow *window, int key, int scancode,
   if (key == GLFW_KEY_ESCAPE and action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, 1); // close the window 
   if (key == GLFW_KEY_C and action == GLFW_PRESS)
-    clearConsoleBuffer();
+    MonitoringWindow::instance().clearConsoleBuffer();
 }
 
 //static
@@ -323,7 +325,7 @@ static ImVec4 get_cell_color(float temp)
 //static
 DEFINE_RENDER_MODULE(cell_view)
 {
-  ImGui::Begin("CELL VIEW", NULL, s_windowFlags);
+  ImGui::Begin("CELL VIEW", NULL, MonitoringWindow::instance().d_windowFlags);
 
   // For each battery module, display a group of individual cells
   for (size_t module_idx = 0; module_idx != BMS::modules; ++module_idx)
@@ -367,7 +369,7 @@ DEFINE_RENDER_MODULE(cell_view)
 //static
 DEFINE_RENDER_MODULE(general_stats)
 {
-  ImGui::Begin("GENERAL STATISTICS", NULL, s_windowFlags);
+  ImGui::Begin("GENERAL STATISTICS", NULL, MonitoringWindow::instance().d_windowFlags);
 
   // Display general statistics on the cell level
   ImGui::TextColored(ImVec4(1, 0, 0, 1), "Cell Level");
@@ -394,7 +396,7 @@ DEFINE_RENDER_MODULE(general_stats)
 //static
 DEFINE_RENDER_MODULE(soc)
 {
-  ImGui::Begin("CHARGE PERCENTAGE", NULL, s_windowFlags);
+  ImGui::Begin("CHARGE PERCENTAGE", NULL, MonitoringWindow::instance().d_windowFlags);
   ImGui::ProgressBar(UNPACK(soc) / 100); // convert from 100% to fractions
   ImGui::End();
 }
@@ -479,8 +481,10 @@ DEFINE_RENDER_MODULE(sys_curr_graph)
 //static
 DEFINE_RENDER_MODULE(console)
 {
-  ImGui::Begin("CONSOLE", NULL, s_windowFlags);
-  for_each(s_consoleBuffer.begin(), s_consoleBuffer.end(),
+  MonitoringWindow &inst = MonitoringWindow::instance();
+
+  ImGui::Begin("CONSOLE", NULL, inst.d_windowFlags);
+  for_each(inst.d_consoleBuffer.begin(), inst.d_consoleBuffer.end(),
            [](string const &msg)
            {
              ImGui::Text("%s", msg.c_str());
@@ -491,22 +495,24 @@ DEFINE_RENDER_MODULE(console)
 //static
 DEFINE_RENDER_MODULE(simulator)
 {
-  ImGui::Begin("SIMULATOR", NULL, s_windowFlags);
+  MonitoringWindow &inst = MonitoringWindow::instance();
+
+  ImGui::Begin("SIMULATOR", NULL, inst.d_windowFlags);
   // IDLE Mode
   if (ImGui::Button("Disconnect the battery"))
-    s_simulator.send_cmd(Command::IDLE);
+    inst.d_simulator.send_cmd(Command::IDLE);
 
   // CHARGE Mode
   static float s_charge_current = 10.0;
   if (ImGui::Button("Charge the battery"))
-    s_simulator.send_cmd(Command::CHARGE, s_charge_current);
+    inst.d_simulator.send_cmd(Command::CHARGE, s_charge_current);
   ImGui::SameLine();
   ImGui::InputFloat("Charging current [A]", &s_charge_current, 10.f, 0, "%.2f");
 
   // DISCHARGE Mode
   static float s_discharge_load = 300.0;
   if (ImGui::Button("Discharge the battery"))
-    s_simulator.send_cmd(Command::DISCHARGE, s_discharge_load);
+    inst.d_simulator.send_cmd(Command::DISCHARGE, s_discharge_load);
   ImGui::SameLine();
   ImGui::InputFloat("Load resistance [Ω]", &s_discharge_load, 300.f, 0, "%.2f");
 

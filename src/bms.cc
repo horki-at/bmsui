@@ -4,8 +4,7 @@ using namespace std;
 
 istream &operator>>(istream &in, BMS::Data &data)
 {
-  string line;
-  if (not getline(in, line))
+  string line; if (not getline(in, line))
     return in;
 
   stringstream ss(line);

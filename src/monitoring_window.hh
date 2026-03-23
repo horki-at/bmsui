@@ -37,43 +37,45 @@ public:
   };
 
 private:
+  static inline bool s_initialized = false; // you must call init() 
+
+  static void (*const s_modules[])(BMS::Data const &data);
+  std::bitset<static_cast<size_t>(Module::N_MODULE)> d_enabledModules;
+  
   size_t d_width, d_height;
   GLFWwindow *d_window;
+
   BMS d_bms;
+  Simulator d_simulator;
 
-  static Simulator s_simulator;
+  ImGuiWindowFlags d_windowFlags   = ImGuiWindowFlags_NoCollapse;
+  bool d_openRealDeviceFlag        = false;
+  bool d_simulateVirtualDeviceFlag = false;
+  bool d_closeSimulationFlag       = false;
+  bool d_clearConsoleFlag          = false;
 
-  std::bitset<static_cast<size_t>(Module::N_MODULE)> d_enabledModules;
-  static void (*const s_modules[])(BMS::Data const & data);
-
-  static ImGuiWindowFlags s_windowFlags;
-  static bool s_openRealDeviceFlag;
-  static bool s_simulateVirtualDeviceFlag;
-  static bool s_closeSimulationFlag;
-  static bool s_clearConsoleFlag;
-
-  static std::vector<std::string> s_consoleBuffer;
+  std::vector<std::string> d_consoleBuffer;
 
   BMS::Data d_datacpy;          // the last copy of Data, used when there is no
                                 // input from the circular Data buffer.
-  
 public:
-  explicit MonitoringWindow(std::string title,
-                            size_t width = 2000,
-                            size_t height = 1400);
   DISABLE_CPY_MV(MonitoringWindow);
   ~MonitoringWindow();
 
-  void enable(Module module); 
-  void disable(Module module);
-
-  void render();
-
   // Initialize rendering backends. This function must be manually called before
   // constructing an instance of MonitorWindow.
-  static void init();
+  static void init(std::string title, size_t width = 2000, size_t height = 1400);
+
+  // Obtain a singleton instance of the MonitoringWindow.
+  static MonitoringWindow &instance();
+
+  void enable(Module module); 
+  void disable(Module module);
+  void render();
 
 private:
+  MonitoringWindow() = default;
+
   void setup_glfw_context() const;
   void setup_imgui_context() const;
 
@@ -89,7 +91,7 @@ private:
   void closeSimulation();
 
   void consoleWrite(std::string const &message);
-  static void clearConsoleBuffer();
+  void clearConsoleBuffer();
 
   // Available modules that can be enabled using the appropriate Module flag.
   DECLARE_RENDER_MODULE(demo);
@@ -114,13 +116,13 @@ inline void MonitoringWindow::disable(Module module)
 
 inline void MonitoringWindow::consoleWrite(std::string const &message)
 {
-  s_consoleBuffer.push_back(message);
+  d_consoleBuffer.push_back(message);
 }
 
 //static
 inline void MonitoringWindow::clearConsoleBuffer()
 {
-	s_consoleBuffer.clear();
+	d_consoleBuffer.clear();
 }
 
 #endif //INCLUDED_MONITORING_WINDOW_

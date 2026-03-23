@@ -17,8 +17,8 @@ catch (exception const &exc)
 int main() try
 {
   // Initialize all the subsystems.
-  MonitoringWindow::init();
-  MonitoringWindow window("BMSUI - Battery Management System User Interface");
+  MonitoringWindow::init("BMSUI - Battery Management System User Interface");
+  MonitoringWindow &window = MonitoringWindow::instance();
 
   // Enable wanted views of data
   window.enable(MonitoringWindow::Module::SYS_VOLT_GRAPH);
