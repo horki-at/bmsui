@@ -22,7 +22,6 @@ int main() try
 
   // Enable wanted views of data
   window.enable(MonitoringWindow::Module::SYS_VOLT_GRAPH);
-  window.enable(MonitoringWindow::Module::SYS_CURR_GRAPH);
   window.enable(MonitoringWindow::Module::GENERAL_STATS);
   window.enable(MonitoringWindow::Module::CONSOLE);
   window.enable(MonitoringWindow::Module::CELL_VIEW);

@@ -1,5 +1,7 @@
 #include "double_fork.hh"
 
+#ifdef _POSIX
+
 #include <stdexcept>
 #include <unistd.h>
 #include <signal.h>
@@ -40,3 +42,5 @@ void DoubleFork::kill() const
   if (::kill(-d_pid2, SIGKILL) == -1)
     throw runtime_error("couldn't kill d_pid2.");
 }
+
+#endif

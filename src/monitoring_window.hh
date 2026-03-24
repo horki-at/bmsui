@@ -3,16 +3,19 @@
 
 #include "bms.hh"
 #include "simulator.hh"
+#include "utils.hh"
 
 #include "imgui.h"
 
+#define GLFW_INCLUDE_NONE
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
+
 #include <vector>
+#include <memory>
 #include <string>
 #include <bitset>
 #include <limits>
-
-// forward declarations
-class GLFWwindow;
 
 #define UNPACK(varname) (data.varname)
 #define DECLARE_RENDER_MODULE(name)                                            \
@@ -42,8 +45,8 @@ private:
   static void (*const s_modules[])(BMS::Data const &data);
   std::bitset<static_cast<size_t>(Module::N_MODULE)> d_enabledModules;
   
-  size_t d_width, d_height;
-  GLFWwindow *d_window;
+  size_t d_width = 0, d_height = 0;
+  GLFWwindow *d_window = nullptr;
 
   BMS d_bms;
   Simulator d_simulator;
@@ -56,7 +59,7 @@ private:
 
   std::vector<std::string> d_consoleBuffer;
 
-  BMS::Data d_datacpy;          // the last copy of Data, used when there is no
+  BMS::Data d_datacpy = {0};    // the last copy of Data, used when there is no
                                 // input from the circular Data buffer.
 public:
   DISABLE_CPY_MV(MonitoringWindow);

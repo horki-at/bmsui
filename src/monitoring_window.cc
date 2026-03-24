@@ -1,13 +1,13 @@
 #include "monitoring_window.hh"
+#include "simulator_impl.hh"
 #include "graph.hh"
 
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
-#define GLFW_INCLUDE_NONE
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
 #include "implot.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -15,6 +15,7 @@
 #include <optional>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 #include <string>
 using namespace std;
 
@@ -71,6 +72,8 @@ void MonitoringWindow::init(std::string title, size_t width, size_t height)
     glfwTerminate();
     throw runtime_error("Couldn't create a GLFW3 window.");
   }
+
+  window.d_simulator.set_impl(make_unique<Simulator::Impl>());
 
   // Setup ImGui and GLFW contexts
   window.setup_glfw_context();
@@ -170,9 +173,9 @@ catch (exception const &exc)
 
 void MonitoringWindow::closeSimulation() try
 {
+  d_simulator.kill();
   clear_graphs();
   d_datacpy = {};
-  d_simulator.kill();
   disable(Module::SIMULATOR);
 }
 catch (exception const &exc)

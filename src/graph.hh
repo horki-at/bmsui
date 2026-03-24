@@ -7,8 +7,8 @@
 #include <limits>
 
 template <size_t Size,
-          float ExpectedMin = std::numeric_limits<float>::max(),
-          float ExpectedMax = std::numeric_limits<float>::min()>
+          float ExpectedMin = (std::numeric_limits<float>::max)(),
+          float ExpectedMax = (std::numeric_limits<float>::min)()>
 class Graph
 {
   std::array<float, Size> d_x, d_y;
@@ -23,8 +23,8 @@ public:
 
   void clear();                 // Clear the data in each graph.
 
-  float min() const;
-  float max() const;
+  float (min)() const;
+  float (max)() const;
 
   float const *x() const;
   float const *y() const;
@@ -66,13 +66,13 @@ inline float const *Graph<Size, ExpectedMin, ExpectedMax>::y() const
 }
 
 template <size_t Size, float ExpectedMin, float ExpectedMax>
-inline float Graph<Size, ExpectedMin, ExpectedMax>::min() const
+inline float (Graph<Size, ExpectedMin, ExpectedMax>::min)() const
 {
 	return d_min;
 }
 
 template <size_t Size, float ExpectedMin, float ExpectedMax>
-inline float Graph<Size, ExpectedMin, ExpectedMax>::max() const
+inline float (Graph<Size, ExpectedMin, ExpectedMax>::max)() const
 {
 	return d_max;
 }

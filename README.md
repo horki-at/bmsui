@@ -1,6 +1,6 @@
 # BMSUI
 
-<p align="center"><img src="./assets/icon.jpeg" alt="Bmsui icon" width="200"/></p>
+<p align="center"><img src="./assets/icon.png" alt="Bmsui icon" width="200"/></p>
 
 ## Introduction
 
@@ -14,13 +14,24 @@ written using a scripting language.
 This project is my attempt at making the assignment for the software programmer
 position at *Top Dutch Solar Racing* team.
 
-Currently it is not possible to connect a real device because this functionality
-cannot be adequately tested. This function is currently in the [todo
-section](#Todo). Besides, the current version works only on linux because it
-uses POSIX functions and GNU utilities for building, creating virtual devices,
-and compiling. If you wish to use this program, you should install WSL Ubuntu.
+Currently it is not possible to connect a real device because I don't have access to the real BMS, and hence
+this functionality cannot be adequately tested. This function is currently in the [todo section](#Todo). The current version
+supports Linux and Windows, assuming that your graphics card supports OpenGL 4.0 or newer. 
+Lastly, because of transfering from Makefiles to CMake, it is not possible to install the program. The only option is to build 
+it from source. Installation instructions are listed in the [Installation](#Installation) section.
 
 ## Requirements
+
+### Windows
+
+To be able to build and run the program on Windows, you must have the following prerequisites:
+1. [Cmake](https://cmake.org/download/) (version 3.23 or newer)
+2. [Visual Studio](https://visualstudio.microsoft.com/downloads/) Environment (including its MSVC)
+3. [Git](https://git-scm.com/download/win)
+4. [Python](https://www.python.org/downloads/)
+5. [uv](https://astral.sh/uv/) (eventually, this option would be optional. For now, it is **required**)
+
+### Linux/Debian
 
 On Linux/Debian (Wayland/X11) use the following command to install all the prerequisites:
 ```bash
@@ -38,15 +49,25 @@ manual](https://wiki.debian.org/NvidiaGraphicsDrivers).
 
 To install use the following commands:
 
+### Windows
+```powershell
+$ cd path\to\your\preferred\directory
+$ git clone https://github.com/horki-at/bmsui.git
+$ cd bmsui
+$ .\util\configure.bat
+$ cmake -Bbuild/ -S. -DCMAKE_BUILD_TYPE=Release
+$ cmake --build build/ -j16
+```
+
+### Linux/OSX
+
 ```bash
 $ cd path/to/your/preferred/directory
 $ git clone https://github.com/horki-at/bmsui.git
 $ cd bmsui
-$ ./configure.sh
-# To install system-wise:
-$ sudo -E make install -j16
-# To install user-wide:
-$ make install -j16
+$ ./util/configure.sh
+$ cmake -Bbuild/ -S. -DCMAKE_BUILD_TYPE=Release
+$ cmake --build build/ -j16
 ```
 
 ## Usage
@@ -113,7 +134,9 @@ transceiver (ttyVBMS) and the real receiver (ttyVAPP). The second process is the
 populate_bms.py script that sends BMS data to ttyVBMS with a set frequency
 (hardcoded at 100Hz). It provides methods to kill the simulation, check whether
 it is running, retrieve ttyVBMS and ttyVAPP file paths, and to send commands to
-the simulator script (see enum class Command) such as charge or discharge.
+the simulator script (see enum class Command) such as charge or discharge. This class
+is platform-dependent. On Linux, it uses DoubleFork and Pipe, while on Windows it directly
+call Windows API to create the processes and manage their input/output.
 
 *Ring* is a thread-safe circular buffer used for more efficient communication
 between the producer and consumer threads. If the ring is full, the producer has
@@ -181,13 +204,7 @@ dataclass has the humidity field for future uses.
 
 ### Build system
 
-As mentioned in the [Introduction](#Introduction), the project is currently only
-supported and tested on (Debian) Linux. The reason is that the build system is
-fully written in GNU Make and the code base uses POSIX functions. Making the
-program cross platform means that all the heavily platform-dependent code must
-be abstracted (the most crucial components here are DoubleFork and Pipe, which
-are just wrappers around glibc).
-
+CMake was chosen as the build system for this project because of its cross-platform nature.
 Installation and building instructions are listed in
 [Installation](#Installation) and [Prerequisites](#Prerequisites). Instead of
 the standard approaches, I use the uv utility used to speed up python library
@@ -204,6 +221,8 @@ installation and venv setup significantly.
 
 ## Todo
 
+- [ ] Make the program auto-detect the BMS device when connected, and read data from it instead of the simulator.
+- [ ] Make the program more visually appealing.
 - [ ] A better simulation model for the battery pack (e.g., not a first-degree
       order model, better cell-to-cell temperature interaction)
 - [ ] Module to fully customize the simulation from within the
@@ -214,8 +233,9 @@ installation and venv setup significantly.
       file)
 - [ ] Ability to specify the order of UART data received from BMS. Right now it
       is hardcoded into one of the extractor operators in BMS.
-- [ ] Make this program cross platform (Windows), and list prerequisites-install
-      commands for other linux distributions.
+- [x] Support Windows.
+- [ ] Support OSX.
+- [ ] List prerequisites-install commands for other linux distributions (Fedora, Arch, and OpenSUSE).
 - [ ] (less important) Display the 3D model of the battery pack for visual
       aesthetics.
 
@@ -225,3 +245,8 @@ installation and venv setup significantly.
 - Aaron Danner youtube channel for electronics
 - Wikipedia Sherman-Morrison formula
 - Wikipedia Millman's theorem
+- Modern Operating Systems by Tanenbaum et al.
+- Operating Systems: Three Easy Pieces by Arpaci-Dusseau et al.
+- Windows API Documentation
+- C++ Concurrency in Action by Anthony Williams
+- iESC Regulations

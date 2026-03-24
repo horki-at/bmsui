@@ -1,13 +1,18 @@
 # This utility generates fake BMS data for a battery pack with configurable
 # period, lifetime, baud_rate, cell count, module count, type of connections,
 # and battery cell specification.
+#
+# Arguments:
+# argv[1]: ttyVBMS handle name
+# argv[2]: (for Windows only) named pipe name for communication with C++
 
 import serial
+import win32file
+import platform
 import sys
 import os
 import threading
 import numpy as np
-# from itertools import product
 from dataclasses import dataclass
 from time import sleep
 
@@ -217,13 +222,25 @@ class BMS:
         self.period = period           # BMS sends data at frequency 1/period Hz
         self.device_name = device_name # BMS file device path
         self.baud_rate = baud_rate     # UART baud rating (i.e., bps)
-        try:
-            self.device = serial.Serial(f"{self.device_name}", self.baud_rate,
-                                        timeout=1)
-        except serial.serialutil.SerialException as err:
-            print(err)
-            print("NOTE: Try running ./start_comm.sh")
-            exit(1)
+        # try:
+        #    self.device = serial.Serial(f"{self.device_name}", self.baud_rate,
+        #                                timeout=1)
+        #except serial.serialutil.SerialException as err:
+        #    print(err)
+        #    print("NOTE: Try running ./start_comm.sh or .\\windows_broker.py")
+        #    exit(1)
+        self.device = win32file.CreateFile(
+            device_name,
+            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+            0,             # ttyVBMS is exclusive, so no sharing
+            None,          # no security attributes
+            win32file.OPEN_EXISTING, # ttyVBMS Named Pipe must exist beforehand
+            0,
+            0)
+
+    def write(self, msg):
+        """Write a binary message to the device."""
+        win32file.WriteFile(self.device, msg)
 
 # Simulator variable initializations
 ambient = Environment(65.0, 19.0, 0.06)
@@ -234,6 +251,7 @@ rcd = RCD(10)                   # A, we charge the battery using this current
 R_load = 300                    # Ohm, load resistance
 current_mode = 'idle'
 running = True
+channel: PyHANDLE = None
 
 def generate_bms_msg(battery, cells, load, ambient):
     """ Constructs a comma-separated ASCII string of floats %.2f BMS data.
@@ -324,13 +342,13 @@ def simulation(bms, battery, cells, ambient):
                 cell.idle(bms.period, ambient)
 
         msg = generate_bms_msg(battery, cells, R_load, ambient)
-        bms.device.write(msg.encode('ascii'))
+        bms.write(msg.encode('ascii'))
         sleep(bms.period)
 
 def repl():
     """Run REPL mode for user to input the operation mode (idle, charge,
     discharge, quit).j"""
-    global current_mode, running, rcd, R_load
+    global current_mode, running, rcd, R_load, channel
 
     is_tty = sys.stdin.isatty() # does this script run from a terminal?
     
@@ -338,7 +356,14 @@ def repl():
         print("Starting REPL: (type help)")
     while True:
         input_str = "BMS> " if is_tty else ""
-        cmd = input(input_str).strip().lower().split(" ")
+
+        # Prompt a command either using stdin, or a named pipe.
+        if platform.system() == "Windows":
+            _, data = win32file.ReadFile(channel, 64) # read up to 64 bytes
+            cmd = data.decode('ascii').strip().lower().split(" ")
+        else: # Linux or OSX
+            cmd = input(input_str).strip().lower().split(" ")
+
         if cmd[0] == 'quit':
             running = False
             break
@@ -362,7 +387,21 @@ if __name__ == "__main__":
         daemon=True
     )
 
-    os.write(3, b"ready\0")
+    # Signal the C++ application that the populate data script is ready.
+    if (platform.system() == "Windows"):
+        # Connect to the named pipe if on Windows
+        channel = win32file.CreateFile(
+            sys.argv[2],
+            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+            0,             # no sharing
+            None,          # no security attributes
+            win32file.OPEN_EXISTING, # Named Pipe must exist beforehand
+            0,
+            0)
+        print(f"Connected to {sys.argv[2]}.")
+        win32file.WriteFile(channel, b"ready\0")
+    elif (platform.system() == "Linux"):
+        os.write(3, b"ready\0")
 
     # Start the simulation and the REPL
     thread.start()

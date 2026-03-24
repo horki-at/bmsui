@@ -8,3 +8,5 @@ latex/
 /.quarto/
 **/*.quarto_ipynb
 build/
+out/
+.vs/

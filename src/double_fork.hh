@@ -1,6 +1,8 @@
 #ifndef INCLUDED_DOUBLE_FORK_
 #define INCLUDED_DOUBLE_FORK_
 
+#ifdef _POSIX
+
 #include "utils.hh"
 #include <utility>
 #include <functional>
@@ -39,4 +41,5 @@ inline std::pair<pid_t, pid_t> DoubleFork::pid() const
 	return {d_pid1, d_pid2};
 }
 
-#endif // INCLUDED_DOUBLE_FORK_
+#endif  // _POSIX
+#endif  // INCLUDED_DOUBLE_FORK_
