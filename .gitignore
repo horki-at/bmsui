@@ -7,3 +7,4 @@ ttyVBMS
 latex/
 /.quarto/
 **/*.quarto_ipynb
+build/

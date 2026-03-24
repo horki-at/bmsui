@@ -1,5 +1,4 @@
 #include "simulator.hh"
-#include "paths.hh"
 
 #include <filesystem>
 #include <stdexcept>
@@ -23,7 +22,7 @@ void Simulator::start()
 
 void Simulator::start_comm()
 {
-  char *args[] = { START_COMM_SCRIPT,
+  char *args[] = { (char *)START_COMM_SCRIPT,
                    (char *)d_bmsDeviceFile.string().c_str(),
                    (char *)d_appDeviceFile.string().c_str(),
                    NULL };
@@ -41,8 +40,8 @@ void Simulator::populate_data()
   dup2(d_rdyPipe.writeend(), 3); // NOTE: fd 3 must be used in populate data
   d_rdyPipe.close_write();
   
-  char *args[] = { PYTHON3_BIN,
-                   POPULATE_BMS_SCRIPT,
+  char *args[] = { (char *)PYTHON3_BIN,
+                   (char *)POPULATE_BMS_SCRIPT,
                    (char *)d_bmsDeviceFile.string().c_str(),
                    NULL };
   execvp(PYTHON3_BIN, args);

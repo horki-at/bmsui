@@ -2,7 +2,6 @@
 #define INCLUDED_SIMULATOR_
 
 #include "utils.hh"
-#include "paths.hh"
 #include "pipe.hh"
 #include "double_fork.hh"
 
