@@ -1,7 +1,7 @@
 #ifndef INCLUDED_SIMULATOR_IMPL_
 #define INCLUDED_SIMULATOR_IMPL_
 
-#ifdef _POSIX
+#ifdef __linux__
 
 #include "simulator.hh"
 #include "double_fork.hh"

@@ -16,7 +16,7 @@
 #define TTYVAPP R"(\\.\pipe\ttyVAPP)"
 // this is used for communication with populate_data.py
 #define CHANNEL R"(\\.\pipe\populateDataChannel)"
-#elifdef _POSIX
+#elifdef __linux__
 #define TTYVBMS "/tmp/ttyVBMS"
 #define TTYVAPP "/tmp/ttyVAPP"
 // Placeholder for Windows compatibility

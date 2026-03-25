@@ -6,8 +6,8 @@
 # argv[1]: ttyVBMS handle name
 # argv[2]: (for Windows only) named pipe name for communication with C++
 
+
 import serial
-import win32file
 import platform
 import sys
 import os
@@ -15,6 +15,9 @@ import threading
 import numpy as np
 from dataclasses import dataclass
 from time import sleep
+
+if platform.system() == 'Windows':
+    import win32file
 
 @dataclass
 class Environment:
@@ -222,25 +225,31 @@ class BMS:
         self.period = period           # BMS sends data at frequency 1/period Hz
         self.device_name = device_name # BMS file device path
         self.baud_rate = baud_rate     # UART baud rating (i.e., bps)
-        # try:
-        #    self.device = serial.Serial(f"{self.device_name}", self.baud_rate,
-        #                                timeout=1)
-        #except serial.serialutil.SerialException as err:
-        #    print(err)
-        #    print("NOTE: Try running ./start_comm.sh or .\\windows_broker.py")
-        #    exit(1)
-        self.device = win32file.CreateFile(
-            device_name,
-            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-            0,             # ttyVBMS is exclusive, so no sharing
-            None,          # no security attributes
-            win32file.OPEN_EXISTING, # ttyVBMS Named Pipe must exist beforehand
-            0,
-            0)
+
+        if platform.system() == "Windows":
+            self.device = win32file.CreateFile(
+                device_name,
+                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                0,             # ttyVBMS is exclusive, so no sharing
+                None,          # no security attributes
+                win32file.OPEN_EXISTING, # ttyVBMS Named Pipe must exist beforehand
+                0,
+                0)
+        elif platform.system() == "Linux":
+            try:
+                self.device = serial.Serial(f"{self.device_name}", self.baud_rate,
+                                            timeout=1)
+            except serial.serialutil.SerialException as err:
+                print(err)
+                print("NOTE: Try running ./start_comm.sh or .\\windows_broker.py")
+                exit(1)
 
     def write(self, msg):
         """Write a binary message to the device."""
-        win32file.WriteFile(self.device, msg)
+        if platform.system() == "Windows":
+            win32file.WriteFile(self.device, msg)
+        elif platform.system() == "Linux":
+            self.device.write(msg)
 
 # Simulator variable initializations
 ambient = Environment(65.0, 19.0, 0.06)
@@ -251,7 +260,7 @@ rcd = RCD(10)                   # A, we charge the battery using this current
 R_load = 300                    # Ohm, load resistance
 current_mode = 'idle'
 running = True
-channel: PyHANDLE = None
+channel = None
 
 def generate_bms_msg(battery, cells, load, ambient):
     """ Constructs a comma-separated ASCII string of floats %.2f BMS data.

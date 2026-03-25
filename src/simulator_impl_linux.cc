@@ -1,4 +1,4 @@
-#ifdef _POSIX
+#ifdef __linux__
 
 #include "simulator_impl.hh"
 #include "utils.hh"

@@ -1,6 +1,6 @@
 #include "double_fork.hh"
 
-#ifdef _POSIX
+#ifdef __linux__
 
 #include <stdexcept>
 #include <unistd.h>

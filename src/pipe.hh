@@ -1,7 +1,7 @@
 #ifndef INCLUDED_PIPE_
 #define INCLUDED_PIPE_
 
-#ifdef _POSIX
+#ifdef __linux__
 
 #include "utils.hh"
 #include <unistd.h>
@@ -37,5 +37,5 @@ inline void Pipe::close() { close_read(); close_write(); }
 inline int Pipe::readend() const { return d_pipe[0]; }
 inline int Pipe::writeend() const { return d_pipe[1]; }
 
-#endif // _POSIX
+#endif // __linux__
 #endif // INCLUDED_PIPE_
